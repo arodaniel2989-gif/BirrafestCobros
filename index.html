@@ -136,15 +136,18 @@
     .a-nota { font-size: 10px; font-style: italic; color: #777; text-align: center; margin: 8px 0 18px; }
 
     @media print {
-      header, .container > .card, .tabs, .btn-row, .preview-header { display: none !important; }
-      body { background: white; }
+      header, .container > .card, .tabs, .btn-row, .preview-header,
+      .preview-wrap, .toast { display: none !important; }
+      body { background: white; margin: 0; padding: 0; }
       .container { margin: 0; padding: 0; max-width: 100%; }
-      .preview-wrap { border: none !important; border-radius: 0 !important; }
-      .panel { display: none !important; }
-      .panel.active { display: block !important; }
-      .recibos-sheet { height: 100vh; justify-content: space-between; }
+      #print-zone { display: block !important; }
+      .print-page { page-break-after: always; }
+      .print-page:last-child { page-break-after: avoid; }
+      .recibos-sheet { height: 100vh; display: flex; flex-direction: column; justify-content: space-between; }
       .recibo { flex: 1; }
+      @page { size: A4; margin: 0; }
     }
+    #print-zone { display: none; }
   </style>
 </head>
 <body>
@@ -207,24 +210,25 @@
   </div>
 
   <div class="tabs">
-    <button class="tab active" onclick="switchTab('contrato')">📄 Contrato</button>
+    <button class="tab active" onclick="switchTab('contrato')">📄 Contrato + Anexo I</button>
     <button class="tab" onclick="switchTab('recibo')">🧾 Recibo de seña</button>
-    <button class="tab" onclick="switchTab('anexo')">📋 Anexo I</button>
   </div>
 
   <div id="panel-contrato" class="panel active">
     <div class="btn-row">
-      <button class="btn primary" id="btn-guardar" onclick="guardarYImprimir()">💾 Guardar e imprimir contrato</button>
+      <button class="btn primary" id="btn-guardar" onclick="guardarYImprimir()">💾 Guardar e imprimir todo</button>
     </div>
     <div class="preview-wrap">
-      <div class="preview-header">👁 Vista previa del contrato — imprimir 2 copias, firmar ambas</div>
+      <div class="preview-header">👁 Vista previa — Contrato + Anexo I</div>
       <div id="sheet-contrato"></div>
+      <div style="border-top: 2px dashed #ccc; margin: 0; padding: 8px 16px; font-size: 11px; color: #999; text-align:center; background:#fafafa;">── Anexo I ──</div>
+      <div id="sheet-anexo"></div>
     </div>
   </div>
 
   <div id="panel-recibo" class="panel">
     <div class="btn-row">
-      <button class="btn" onclick="imprimirRecibo()">🖨 Imprimir recibo duplicado</button>
+      <button class="btn" onclick="soloImprimirRecibo()">🖨 Imprimir recibo duplicado</button>
     </div>
     <div class="preview-wrap">
       <div class="preview-header">👁 Vista previa — hoja A4 vertical, cortar al medio</div>
@@ -232,17 +236,15 @@
     </div>
   </div>
 
-  <div id="panel-anexo" class="panel">
-    <div class="btn-row">
-      <button class="btn" onclick="window.print()">🖨 Imprimir Anexo I</button>
-    </div>
-    <div class="preview-wrap">
-      <div class="preview-header">👁 Vista previa Anexo I — productos a completar a mano</div>
-      <div id="sheet-anexo"></div>
-    </div>
-  </div>
-
 </div>
+
+<!-- ZONA DE IMPRESIÓN — solo visible al imprimir -->
+<div id="print-zone">
+  <div class="print-page" id="print-contrato"></div>
+  <div class="print-page" id="print-anexo"></div>
+  <div class="print-page recibos-sheet" id="print-recibo"></div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -262,12 +264,61 @@ document.querySelectorAll('#tipo-group input[type=radio]').forEach(r=>{
 let tabActiva='contrato';
 function switchTab(tab){
   tabActiva=tab;
-  document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('active',['contrato','recibo','anexo'][i]===tab));
-  ['contrato','recibo','anexo'].forEach(p=>document.getElementById(`panel-${p}`).classList.toggle('active',p===tab));
+  document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('active',['contrato','recibo'][i]===tab));
+  ['contrato','recibo'].forEach(p=>document.getElementById(`panel-${p}`).classList.toggle('active',p===tab));
   sync();
 }
 
-const UN=['','uno','dos','tres','cuatro','cinco','seis','siete','ocho','nueve','diez','once','doce','trece','catorce','quince','dieciséis','diecisiete','dieciocho','diecinueve','veinte','veintiuno','veintidós','veintitrés','veinticuatro','veinticinco','veintiséis','veintisiete','veintiocho','veintinueve'];
+function prepararZonaImpresion(){
+  const d=getData();
+  const cut='<div class="cut-line">✂ &nbsp; Duplicado — cortar por aquí &nbsp; ✂</div>';
+  document.getElementById('print-contrato').innerHTML=buildContrato(d);
+  document.getElementById('print-anexo').innerHTML=buildAnexo(d);
+  document.getElementById('print-recibo').innerHTML=buildRecibo(d)+cut+buildRecibo(d);
+}
+
+function soloImprimirRecibo(){
+  const d=getData();
+  const err=validar(d);
+  if(err){showToast(err,'error');return;}
+  prepararZonaImpresion();
+  document.getElementById('print-contrato').style.display='none';
+  document.getElementById('print-anexo').style.display='none';
+  document.getElementById('print-recibo').style.display='flex';
+  setTimeout(()=>{
+    window.print();
+    setTimeout(()=>{
+      document.getElementById('print-contrato').style.display='';
+      document.getElementById('print-anexo').style.display='';
+      document.getElementById('print-recibo').style.display='';
+    },500);
+  },100);
+}
+
+async function guardarYImprimir(){
+  const d=getData();
+  const err=validar(d);
+  if(err){showToast(err,'error');return;}
+  const btn=document.getElementById('btn-guardar');
+  btn.disabled=true;btn.textContent='Guardando...';
+  try{
+    await fetch(WEBAPP_URL,{method:'POST',mode:'no-cors',headers:{'Content-Type':'application/json'},body:JSON.stringify({...d,tipo:'seña'})});
+    prepararZonaImpresion();
+    document.getElementById('print-contrato').style.display='block';
+    document.getElementById('print-anexo').style.display='block';
+    document.getElementById('print-recibo').style.display='flex';
+    setTimeout(()=>{
+      window.print();
+      setTimeout(()=>{
+        document.getElementById('print-contrato').style.display='';
+        document.getElementById('print-anexo').style.display='';
+        document.getElementById('print-recibo').style.display='';
+        showToast('✓ Guardado en Google Sheets');
+      },1000);
+    },300);
+  }catch(e){showToast('Error al conectar con Google Sheets','error');}
+  finally{btn.disabled=false;btn.innerHTML='💾 Guardar e imprimir todo';}
+}['','uno','dos','tres','cuatro','cinco','seis','siete','ocho','nueve','diez','once','doce','trece','catorce','quince','dieciséis','diecisiete','dieciocho','diecinueve','veinte','veintiuno','veintidós','veintitrés','veinticuatro','veinticinco','veintiséis','veintisiete','veintiocho','veintinueve'];
 const DE=['','','veinte','treinta','cuarenta','cincuenta','sesenta','setenta','ochenta','noventa'];
 const CE=['','cien','doscientos','trescientos','cuatrocientos','quinientos','seiscientos','setecientos','ochocientos','novecientos'];
 function numLetras(n){n=Math.floor(n);if(n===0)return 'cero';let r='';if(n>=1000000){const m=Math.floor(n/1000000);r+=(m===1?'un millón':numLetras(m)+' millones')+' ';n%=1000000;}if(n>=1000){const m=Math.floor(n/1000);r+=(m===1?'mil':numLetras(m)+' mil')+' ';n%=1000;}if(n>=100){r+=(n===100?'cien':CE[Math.floor(n/100)])+' ';n%=100;}if(n>0){r+=n<30?UN[n]:DE[Math.floor(n/10)]+(n%10>0?' y '+UN[n%10]:'');}return r.trim();}
@@ -313,32 +364,6 @@ function validar(d){
 }
 
 function showToast(msg,type='success'){const t=document.getElementById('toast');t.textContent=msg;t.className=`toast show ${type}`;setTimeout(()=>{t.className='toast';},3500);}
-
-function imprimirRecibo(){
-  const d=getData();
-  const err=validar(d);
-  if(err){showToast(err,'error');return;}
-  // Oculta temporalmente todo menos el recibo para imprimir
-  document.getElementById('panel-contrato').style.display='none';
-  document.getElementById('panel-anexo').style.display='none';
-  document.getElementById('panel-recibo').style.display='block';
-  window.print();
-  // Restaura después de imprimir
-  setTimeout(()=>{
-    switchTab('recibo');
-  },500);
-}
-
-async function guardarYImprimir(){
-  const d=getData();const err=validar(d);if(err){showToast(err,'error');return;}
-  const btn=document.getElementById('btn-guardar');btn.disabled=true;btn.textContent='Guardando...';
-  try{
-    await fetch(WEBAPP_URL,{method:'POST',mode:'no-cors',headers:{'Content-Type':'application/json'},body:JSON.stringify({...d,tipo:'seña'})});
-    showToast('✓ Guardado en Google Sheets — imprimiendo contrato...');
-    setTimeout(()=>window.print(),800);
-  }catch(e){showToast('Error al conectar con Google Sheets','error');}
-  finally{btn.disabled=false;btn.innerHTML='💾 Guardar e imprimir contrato';}
-}
 
 function v(val,ph='...'){if(!val&&val!==0)return `<span style="color:#bbb;font-style:italic;">${ph}</span>`;return val;}
 
