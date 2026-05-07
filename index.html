@@ -111,6 +111,12 @@
     .c-firma-line { border-bottom: 1px solid #333; margin-bottom: 4px; height: 30px; }
     .c-firma-lbl { font-size: 9px; font-weight: 700; color: #333; }
     .c-sep { border: none; border-top: 1.5px dashed #aaa; margin: 16px 0; }
+    .c-subsec { font-size: 11px; font-weight: 700; color: #2C3E50; margin: 10px 0 4px; }
+    .c-table { width: 100%; border-collapse: collapse; margin: 8px 0 10px; font-size: 11px; }
+    .c-table th { background: #C0392B; color: white; padding: 5px 8px; text-align: center; font-size: 10px; }
+    .c-table td { padding: 4px 8px; border: 0.5px solid #ccc; text-align: center; }
+    .c-table td:first-child { text-align: left; }
+    .c-table tr:nth-child(even) td { background: #fafafa; }
     .c-ribo-titulo { text-align: center; font-size: 12px; font-weight: 700; color: #C0392B; margin: 8px 0 4px; }
     .c-ribo-row { display: flex; gap: 6px; margin-bottom: 4px; }
     .c-ribo-lbl { font-weight: 700; font-size: 10px; min-width: 120px; }
@@ -134,6 +140,8 @@
       body { background: white; }
       .container { margin: 0; padding: 0; max-width: 100%; }
       .preview-wrap { border: none !important; border-radius: 0 !important; }
+      .panel { display: none !important; }
+      .panel.active { display: block !important; }
       .recibos-sheet { height: 100vh; justify-content: space-between; }
       .recibo { flex: 1; }
     }
@@ -155,7 +163,7 @@
       <div class="field"><label>DNI / CUIT</label><input type="text" id="cuit" placeholder="20-12345678-9" oninput="sync()"></div>
     </div>
     <div class="field" style="margin-bottom:10px;"><label>Nombre del stand</label><input type="text" id="stand" placeholder="Nombre visible en el evento" oninput="sync()"></div>
-    <div class="field"><label>Tipo de stand</label>
+    <div class="field" style="margin-bottom:10px;"><label>Tipo de stand</label>
       <div class="tipo-group" id="tipo-group">
         <label><input type="radio" name="tipo" value="Food Truck"> Food Truck</label>
         <label><input type="radio" name="tipo" value="Beer Truck"> Beer Truck</label>
@@ -164,6 +172,7 @@
         <label><input type="radio" name="tipo" value="Parrilla"> Parrilla</label>
       </div>
     </div>
+    <div class="field"><label>Teléfono de contacto</label><input type="text" id="telefono" placeholder="Ej: 381-123-4567" oninput="sync()"></div>
   </div>
 
   <div class="card">
@@ -198,25 +207,14 @@
   </div>
 
   <div class="tabs">
-    <button class="tab active" onclick="switchTab('recibo')">🧾 Recibo de seña</button>
-    <button class="tab" onclick="switchTab('contrato')">📄 Contrato</button>
+    <button class="tab active" onclick="switchTab('contrato')">📄 Contrato</button>
+    <button class="tab" onclick="switchTab('recibo')">🧾 Recibo de seña</button>
     <button class="tab" onclick="switchTab('anexo')">📋 Anexo I</button>
   </div>
 
-  <div id="panel-recibo" class="panel active">
+  <div id="panel-contrato" class="panel active">
     <div class="btn-row">
-      <button class="btn" onclick="soloImprimir()">🖨 Solo imprimir</button>
-      <button class="btn primary" id="btn-guardar" onclick="guardarYImprimir()">💾 Guardar e imprimir</button>
-    </div>
-    <div class="preview-wrap">
-      <div class="preview-header">👁 Vista previa — hoja A4 vertical, cortar al medio</div>
-      <div class="recibos-sheet" id="sheet-recibo"></div>
-    </div>
-  </div>
-
-  <div id="panel-contrato" class="panel">
-    <div class="btn-row">
-      <button class="btn secondary" onclick="window.print()">🖨 Imprimir contrato (2 copias)</button>
+      <button class="btn primary" id="btn-guardar" onclick="guardarYImprimir()">💾 Guardar e imprimir contrato</button>
     </div>
     <div class="preview-wrap">
       <div class="preview-header">👁 Vista previa del contrato — imprimir 2 copias, firmar ambas</div>
@@ -224,9 +222,19 @@
     </div>
   </div>
 
+  <div id="panel-recibo" class="panel">
+    <div class="btn-row">
+      <button class="btn" onclick="imprimirRecibo()">🖨 Imprimir recibo duplicado</button>
+    </div>
+    <div class="preview-wrap">
+      <div class="preview-header">👁 Vista previa — hoja A4 vertical, cortar al medio</div>
+      <div class="recibos-sheet" id="sheet-recibo"></div>
+    </div>
+  </div>
+
   <div id="panel-anexo" class="panel">
     <div class="btn-row">
-      <button class="btn secondary" onclick="window.print()">🖨 Imprimir Anexo I</button>
+      <button class="btn" onclick="window.print()">🖨 Imprimir Anexo I</button>
     </div>
     <div class="preview-wrap">
       <div class="preview-header">👁 Vista previa Anexo I — productos a completar a mano</div>
@@ -251,9 +259,11 @@ document.querySelectorAll('#tipo-group input[type=radio]').forEach(r=>{
   });
 });
 
+let tabActiva='contrato';
 function switchTab(tab){
-  document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('active',['recibo','contrato','anexo'][i]===tab));
-  ['recibo','contrato','anexo'].forEach(p=>document.getElementById(`panel-${p}`).classList.toggle('active',p===tab));
+  tabActiva=tab;
+  document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('active',['contrato','recibo','anexo'][i]===tab));
+  ['contrato','recibo','anexo'].forEach(p=>document.getElementById(`panel-${p}`).classList.toggle('active',p===tab));
   sync();
 }
 
@@ -288,7 +298,7 @@ function getData(){
   const canon=parseFloat(document.getElementById('canon').value)||0;
   const sena=parseFloat(document.getElementById('sena').value)||0;
   const saldo=canon>=sena?canon-sena:null;
-  return {fecha:document.getElementById('fecha').value,nombre:document.getElementById('nombre').value||'',cuit:document.getElementById('cuit').value||'',stand:document.getElementById('stand').value||'',tipoStand:tipo?tipo.value:'',canon,sena,saldo,letras:document.getElementById('letras').value||'',forma:document.getElementById('forma').value||''};
+  return {fecha:document.getElementById('fecha').value,nombre:document.getElementById('nombre').value||'',cuit:document.getElementById('cuit').value||'',stand:document.getElementById('stand').value||'',telefono:document.getElementById('telefono').value||'',tipoStand:tipo?tipo.value:'',canon,sena,saldo,letras:document.getElementById('letras').value||'',forma:document.getElementById('forma').value||''};
 }
 
 function validar(d){
@@ -304,16 +314,30 @@ function validar(d){
 
 function showToast(msg,type='success'){const t=document.getElementById('toast');t.textContent=msg;t.className=`toast show ${type}`;setTimeout(()=>{t.className='toast';},3500);}
 
-function soloImprimir(){const d=getData();const err=validar(d);if(err){showToast(err,'error');return;}window.print();}
+function imprimirRecibo(){
+  const d=getData();
+  const err=validar(d);
+  if(err){showToast(err,'error');return;}
+  // Oculta temporalmente todo menos el recibo para imprimir
+  document.getElementById('panel-contrato').style.display='none';
+  document.getElementById('panel-anexo').style.display='none';
+  document.getElementById('panel-recibo').style.display='block';
+  window.print();
+  // Restaura después de imprimir
+  setTimeout(()=>{
+    switchTab('recibo');
+  },500);
+}
 
 async function guardarYImprimir(){
   const d=getData();const err=validar(d);if(err){showToast(err,'error');return;}
   const btn=document.getElementById('btn-guardar');btn.disabled=true;btn.textContent='Guardando...';
   try{
     await fetch(WEBAPP_URL,{method:'POST',mode:'no-cors',headers:{'Content-Type':'application/json'},body:JSON.stringify({...d,tipo:'seña'})});
-    showToast('✓ Guardado en Google Sheets');setTimeout(()=>window.print(),800);
+    showToast('✓ Guardado en Google Sheets — imprimiendo contrato...');
+    setTimeout(()=>window.print(),800);
   }catch(e){showToast('Error al conectar con Google Sheets','error');}
-  finally{btn.disabled=false;btn.innerHTML='💾 Guardar e imprimir';}
+  finally{btn.disabled=false;btn.innerHTML='💾 Guardar e imprimir contrato';}
 }
 
 function v(val,ph='...'){if(!val&&val!==0)return `<span style="color:#bbb;font-style:italic;">${ph}</span>`;return val;}
@@ -353,21 +377,65 @@ function buildRecibo(d){
 
 // ── CONTRATO ──
 function buildContrato(d){
-  const esGastro=['Food Truck','Carpa gastronómica','Parrilla'].includes(d.tipoStand);
+  const esGastro=['Food Truck','Carpa gastronómica'].includes(d.tipoStand);
+  const esParrilla=d.tipoStand==='Parrilla';
   const esCervecero=['Beer Truck','Carpa cerveza'].includes(d.tipoStand);
-  const numExtra = esGastro||esCervecero ? 1 : 0;
+
+  // Sección 6 construida por separado para evitar conflictos con template literals anidados
+  let sec6 = '<div class="c-sec">6. CONDICIONES ESPECÍFICAS POR TIPO DE EXPOSITOR</div>';
+
+  if(esGastro){
+    sec6 += '<p class="c-subsec">6.1. Expositores Gastronómicos (Food Trucks y Carpas Gastronómicas)</p>';
+    sec6 += '<p class="c-body">Además de las condiciones generales, los expositores gastronómicos deberán cumplir con lo siguiente:</p>';
+    sec6 += '<ol class="c-ol">';
+    sec6 += '<li><strong>Proveedor oficial de papas fritas — Exclusividad McCain:</strong> BirraFest VII ha designado a Vía Gastronómica (Grupo Share Out) como proveedor estratégico exclusivo de papas pre-fritas congeladas marca McCain para el evento. Todo expositor gastronómico que ofrezca papas fritas o productos elaborados a base de papa congelada deberá adquirirlos exclusivamente a través de dicho proveedor, quedando expresamente prohibida la utilización de papas pre-fritas congeladas de cualquier otra marca o proveedor durante el transcurso del evento.</li>';
+    sec6 += '<li><strong>Preventa especializada:</strong> El proveedor oficial realizará contacto previo de preventa personalizada con los expositores confirmados, semanas antes del evento, para coordinar pedidos, precios especiales y logística de entrega. La organización facilitará los datos de contacto del expositor a tal efecto.</li>';
+    sec6 += '<li><strong>Logística garantizada:</strong> Vía Gastronómica pondrá a disposición su flota propia y capacidad de almacenamiento para asegurar stock constante de productos congelados y aderezos, evitando quiebres de stock en horas pico.</li>';
+    sec6 += '<li><strong>Incumplimiento:</strong> El uso de papas pre-fritas congeladas de otra marca o proveedor faculta a la organización a retirar el producto del stand durante el evento, sin derecho a compensación ni reintegro.</li>';
+    sec6 += '</ol>';
+  }
+
+  if(esCervecero){
+    const num = esGastro ? '6.2' : '6.1';
+    sec6 += '<p class="c-subsec">' + num + '. Expositores Cerveceros (Beer Trucks y Carpas de Cerveza)</p>';
+    sec6 += '<p class="c-body">Además de las condiciones generales, los expositores cerveceros deberán cumplir con:</p>';
+    sec6 += '<ol class="c-ol">';
+    sec6 += '<li>Ofrecer únicamente las marcas y variedades de cerveza declaradas en el Anexo I y aprobadas por la organización.</li>';
+    sec6 += '<li>Está prohibida la comercialización de bebidas alcohólicas distintas a la cerveza sin autorización expresa de la organización.</li>';
+    sec6 += '</ol>';
+  }
+
+  if(esParrilla){
+    sec6 += '<p class="c-subsec">6.1. Parrillas</p>';
+    sec6 += '<p class="c-body">Las parrillas deberán cumplir exclusivamente las condiciones generales y el límite de cuatro (4) productos por el Anexo I. Su espacio asignado es de 8 metros lineales.</p>';
+  }
+
+  if(!esGastro && !esCervecero && !esParrilla){
+    sec6 += '<p class="c-body" style="font-style:italic;">Las condiciones específicas aplican según el tipo de stand declarado.</p>';
+  }
+
   return `<div class="contrato">
     <div class="c-titulo">Bases y Condiciones de Participación</div>
-    <div class="c-sub">BirraFest Tucumán – 7ma. Edición</div>
-    <div class="c-lugar">Parque Avellaneda, San Miguel de Tucumán · 30 y 31 de mayo de 2026</div>
+    <div class="c-sub">BIRRA FEST TUCUMÁN – 7ma. EDICIÓN</div>
+    <div class="c-lugar">Parque Avellaneda, San Miguel de Tucumán</div>
+
+    <div class="c-ficha">
+      <div class="c-ficha-hdr">Datos del evento</div>
+      <div class="c-ficha-row"><span class="c-ficha-lbl">Armado / Montaje</span><span class="c-ficha-val">Viernes 29 de mayo de 2026 – Según cronograma de organización</span></div>
+      <div class="c-ficha-row"><span class="c-ficha-lbl">Día 1 – Sábado</span><span class="c-ficha-val">30 de mayo de 2026 | Apertura al público: 18:00 hs.</span></div>
+      <div class="c-ficha-row"><span class="c-ficha-lbl">Día 2 – Domingo</span><span class="c-ficha-val">31 de mayo de 2026 | Apertura al público: 17:00 hs.</span></div>
+      <div class="c-ficha-row"><span class="c-ficha-lbl">Desmontaje</span><span class="c-ficha-val">Lunes 1 de junio de 2026 a partir de las 00:00 hs.</span></div>
+      <div class="c-ficha-row"><span class="c-ficha-lbl">Lugar</span><span class="c-ficha-val">Parque Avellaneda, San Miguel de Tucumán</span></div>
+    </div>
 
     <div class="c-ficha">
       <div class="c-ficha-hdr">Datos del expositor</div>
       <div class="c-ficha-row"><span class="c-ficha-lbl">Nombre / Razón social</span><span class="c-ficha-val">${v(d.nombre,'________________________________')}</span></div>
       <div class="c-ficha-row"><span class="c-ficha-lbl">DNI / CUIT</span><span class="c-ficha-val">${v(d.cuit,'________________________________')}</span></div>
       <div class="c-ficha-row"><span class="c-ficha-lbl">Nombre del stand</span><span class="c-ficha-val">${v(d.stand,'________________________________')}</span></div>
-      <div class="c-ficha-row"><span class="c-ficha-lbl">Tipo de stand</span><span class="c-ficha-val">${v(d.tipoStand,'____________________')}</span></div>
-      <div class="c-ficha-row"><span class="c-ficha-lbl">Fecha</span><span class="c-ficha-val">${d.fecha}</span></div>
+      <div class="c-ficha-row"><span class="c-ficha-lbl">Tipo de stand</span><span class="c-ficha-val">${v(d.tipoStand,'☐ Food Truck  ☐ Beer Truck  ☐ Carpa gastronómica  ☐ Carpa cerveza  ☐ Parrilla')}</span></div>
+      <div class="c-ficha-row"><span class="c-ficha-lbl">Teléfono de contacto</span><span class="c-ficha-val">${v(d.telefono,'________________________________')}</span></div>
+      <div class="c-ficha-row"><span class="c-ficha-lbl">Fecha de emisión</span><span class="c-ficha-val">${d.fecha}</span></div>
     </div>
 
     <div class="c-ficha">
@@ -378,79 +446,93 @@ function buildContrato(d){
       <div class="c-ficha-row"><span class="c-ficha-lbl">Fecha límite saldo</span><span class="c-ficha-val red">25 de mayo de 2026</span></div>
     </div>
 
-    <div class="c-sec">1. Condiciones generales</div>
-    <p class="c-body">La participación es obligatoria en ambas jornadas (sábado 30 y domingo 31 de mayo de 2026). El armado se realizará el viernes 29 de mayo y el desmontaje a partir del lunes 1 de junio desde las 00:00 hs.</p>
+    <div class="c-sec">1. CANON DE PARTICIPACIÓN</div>
+    <p class="c-body">La participación en el evento implica la presencia obligatoria durante los dos (2) días del festival (sábado 30 y domingo 31 de mayo). No se admite participación parcial. El canon cubre ambas jornadas.</p>
+    <table class="c-table">
+      <thead><tr><th>Tipo de stand</th><th>Metros asignados</th><th>Canon total (2 días)</th></tr></thead>
+      <tbody>
+        <tr><td>Food truck gastronómico</td><td>5 metros</td><td>$850.000</td></tr>
+        <tr><td>Beer truck / Cervecería</td><td>5 metros</td><td>$850.000</td></tr>
+        <tr><td>Carpa gastronómica</td><td>3 metros</td><td>$850.000</td></tr>
+        <tr><td>Carpa de cerveza</td><td>5 metros</td><td>$850.000</td></tr>
+        <tr><td>Parrilla</td><td>8 metros</td><td>$1.100.000</td></tr>
+      </tbody>
+    </table>
+    <p class="c-body">Todo pago realizado en concepto de seña o pago a cuenta es no reintegrable ante cancelación por parte del expositor.</p>
+
+    <div class="c-sec">2. CONDICIONES GENERALES DEL PUNTO DE VENTA</div>
+    <p class="c-body">Cada expositor deberá cumplir con la totalidad de los siguientes requisitos:</p>
     <ol class="c-ol">
-      <li>Contar con matafuegos de 5 kg (parrillas: baldes con arena).</li>
-      <li>Alargador de 15 m (cable tipo taller 3 x 2,5 mm con ficha) para conexión eléctrica.</li>
-      <li>Tablero eléctrico propio, disyuntor y 2 térmicas.</li>
-      <li>Cartelería con nombre, productos y precios. Dos cestos de basura (interior y exterior).</li>
-      <li>Luz de emergencia.</li>
-      <li>Entregar el espacio en las condiciones recibidas.</li>
-      <li>Está prohibido el uso de resistencia eléctrica (pava, olla, freidora eléctricas).</li>
-      <li>Entregar DOS (2) vouchers por día (sábado y domingo).</li>
-      <li>Todo el personal debe contar con carnet de sanidad y bromatología.</li>
+      <li>Contar con matafuegos de 5 kg. En el caso de parrillas, se podrán utilizar baldes con arena.</li>
+      <li>Disponer de alargador de 15 metros de longitud (cable tipo taller de 3 x 2,5 mm con ficha) para conexión eléctrica.</li>
+      <li>Contar con su respectivo tablero eléctrico, disyuntor y 2 térmicas.</li>
+      <li>Exhibir cartelería visible con el nombre del stand, listado de productos y lista de precios actualizada.</li>
+      <li>Disponer de 2 cestos de basura: uno para el interior del stand y otro en el exterior.</li>
+      <li>Contar con luz de emergencia.</li>
+      <li>Entregar el espacio en las mismas condiciones en que fue recibido. La organización no se responsabiliza por la integridad de los elementos de trabajo del expositor.</li>
+      <li>El armado se realizará el día 29 de mayo conforme al cronograma y ubicaciones asignadas por la organización.</li>
+      <li>Está prohibido el uso de elementos con resistencia eléctrica: pava eléctrica, olla eléctrica, freidora eléctrica y similares.</li>
+      <li>Entregar DOS (2) vouchers por día (sábado y domingo), destinados a sorteos, personal de limpieza y autoridades invitadas.</li>
+      <li>Todo el personal deberá contar con carnet de sanidad y bromatología (curso de manipulación de alimentos).</li>
     </ol>
 
-    <div class="c-sec">2. Equipamiento mínimo</div>
+    <div class="c-sec">3. EQUIPAMIENTO MÍNIMO REQUERIDO DEL MÓDULO</div>
+    <p class="c-body">Food truck o gazebo autoplegable deberá contar con:</p>
     <ul class="c-ul">
       <li>Guantes negros, cofia y delantal o chaqueta de cocina.</li>
-      <li>Utensilios desinfectados. Tachos diferenciados para agua limpia y agua gris.</li>
-      <li>Equipamiento de refrigeración para perecederos. Cocción a brasas o gas envasado.</li>
-      <li>Mínimo dos receptáculos para separación de residuos. Pizarra con precios.</li>
+      <li>Utensilios desinfectados y tachos diferenciados para agua limpia y agua gris.</li>
+      <li>Equipamiento de refrigeración para alimentos y/o bebidas perecederas.</li>
+      <li>Equipo de cocción o calentamiento a brasas o gas envasado.</li>
+      <li>Mínimo dos receptáculos para separación y almacenamiento de residuos.</li>
+      <li>Mantelería de color negro (en caso de utilizarla).</li>
+      <li>Pizarra con lista de precios actualizada.</li>
     </ul>
+    <p class="c-body" style="font-style:italic;">Todos los detalles de ambientación quedan sujetos a supervisión y aprobación de la organización.</p>
 
-    <div class="c-sec">3. Seguro de accidentes personales</div>
-    <p class="c-body">Presentar seguro con cláusula de no repetición a favor de: Municipalidad S.M. de Tucumán (CUIT 30-65534294-6), Carlos de la Vega (CUIT 20-17866617-8), Carolina Campero (CUIL 27-26834503-0) y Daniel Aro (CUIL 20-18890294-5). Coberturas mínimas: Muerte e Invalidez $2.500.000 — Asistencia médico-farmacéutica $250.000.</p>
+    <div class="c-sec">4. SEGURO DE ACCIDENTES PERSONALES</div>
+    <p class="c-body">Cada expositor deberá contratar y presentar un seguro de accidentes personales que cubra a todo el personal que asista al evento, con las siguientes coberturas mínimas:</p>
+    <ul class="c-ul">
+      <li>Muerte e invalidez: $2.500.000 (pesos dos millones quinientos mil) suma asegurada mínima.</li>
+      <li>Asistencia médico-farmacéutica: $250.000 (pesos doscientos cincuenta mil) suma asegurada mínima.</li>
+    </ul>
+    <p class="c-body">Se deberá presentar certificado de cobertura con cláusula de no repetición a favor de:</p>
+    <div class="c-ficha" style="margin-top:6px;">
+      <div class="c-ficha-hdr">Beneficiarios de la cláusula de no repetición</div>
+      <div class="c-ficha-row"><span class="c-ficha-lbl">Municipalidad de S.M. de Tucumán</span><span class="c-ficha-val">CUIT: 30-65534294-6</span></div>
+      <div class="c-ficha-row"><span class="c-ficha-lbl">Carlos de la Vega</span><span class="c-ficha-val">CUIT: 20-17866617-8</span></div>
+      <div class="c-ficha-row"><span class="c-ficha-lbl">Carolina Campero</span><span class="c-ficha-val">CUIL: 27-26834503-0</span></div>
+      <div class="c-ficha-row"><span class="c-ficha-lbl">Daniel Aro</span><span class="c-ficha-val">CUIL: 20-18890294-5</span></div>
+    </div>
 
-    <div class="c-sec">4. Productos autorizados (Anexo I)</div>
-    <p class="c-body">Límites: <strong>puestos con parrilla hasta 4 productos; resto hasta 3.</strong> El incumplimiento implica expulsión inmediata sin reintegro del canon.</p>
+    <div class="c-sec">5. PRODUCTOS AUTORIZADOS</div>
+    <p class="c-body">Los productos a comercializar deberán ser consignados en el Anexo I y acordados previamente con la organización. Se aplican los siguientes límites:</p>
+    <ul class="c-ul">
+      <li><strong>Puestos con parrilla:</strong> hasta cuatro (4) productos autorizados.</li>
+      <li><strong>Resto de puestos:</strong> hasta tres (3) productos autorizados.</li>
+    </ul>
+    <p class="c-body">Queda expresamente prohibido ofrecer productos distintos a los autorizados. El incumplimiento de esta cláusula será motivo de expulsión inmediata del evento, sin derecho a reintegro.</p>
 
-    ${esGastro?`
-    <div class="c-sec">5. Condiciones específicas — Gastronómicos</div>
-    <ol class="c-ol">
-      <li><strong>Proveedor exclusivo McCain:</strong> Vía Gastronómica (Grupo Share Out) es el proveedor estratégico exclusivo de papas pre-fritas congeladas. Todo expositor que ofrezca papas fritas debe adquirirlas exclusivamente a través de dicho proveedor.</li>
-      <li>El proveedor realizará preventa personalizada con los expositores confirmados. La organización facilitará los datos de contacto.</li>
-      <li>El incumplimiento de la exclusividad faculta a la organización a retirar el producto del stand.</li>
-    </ol>`:''}
+    ${sec6}
 
-    ${esCervecero?`
-    <div class="c-sec">5. Condiciones específicas — Cerveceros</div>
-    <ol class="c-ol">
-      <li>Ofrecer únicamente las marcas y variedades declaradas en el Anexo I.</li>
-      <li>Queda prohibida la comercialización de bebidas alcohólicas distintas a la cerveza sin autorización expresa.</li>
-    </ol>`:''}
-
-    <div class="c-sec">${4+numExtra+1}. Prohibiciones y disposiciones generales</div>
+    <div class="c-sec">7. PROHIBICIONES EXPRESAS</div>
     <ul class="c-ul">
       <li>Modificar o agregar productos no autorizados en el Anexo I.</li>
       <li>Comercializar alimentos en mal estado de conservación.</li>
-      <li>Arrojar desperdicios o efluentes a la vía pública.</li>
-      <li>Ocupar espacio fuera del lugar asignado. Incumplir horarios.</li>
-      <li>Todo pago de seña o a cuenta es no reintegrable ante cancelación del expositor.</li>
-      <li>La organización no garantiza el éxito de ventas ni la realización ante fuerza mayor.</li>
+      <li>Arrojar desperdicios o efluentes a la vía pública o áreas del parque.</li>
+      <li>Ocupar espacio fuera del lugar asignado por la organización.</li>
+      <li>Incumplir los horarios de armado y desmontaje establecidos.</li>
+      <li>Utilizar elementos con resistencia eléctrica (freidoras, ollas, pavas eléctricas).</li>
     </ul>
+    <p class="c-body" style="font-style:italic;">La organización no garantiza el éxito de ventas, ni la realización del evento en caso de lluvia u otras causas de fuerza mayor.</p>
 
-    <div class="c-sec">${4+numExtra+2}. Declaración jurada</div>
-    <p class="c-body">El/la firmante declara haber leído, comprendido y aceptado en su totalidad las presentes Bases y Condiciones, y certifica que todos los datos consignados son verídicos con carácter de declaración jurada.</p>
+    <div class="c-sec">8. DECLARACIÓN JURADA</div>
+    <p class="c-body">El/la firmante declara responsable del punto de venta denominado a continuación, y certifica que todos los datos consignados en el presente contrato son verídicos, con carácter de declaración jurada. Asimismo, declara haber leído, comprendido y aceptado en su totalidad las presentes Bases y Condiciones.</p>
 
-    <div class="c-firma-row">
-      <div class="c-firma-blk"><div class="c-firma-line"></div><div class="c-firma-lbl">Firma y aclaración del Expositor</div><div class="c-firma-lbl" style="margin-top:2px;color:#666;">DNI: ____________________</div></div>
+    <div class="c-firma-row" style="margin-top:24px;">
+      <div class="c-firma-blk"><div class="c-firma-line"></div><div class="c-firma-lbl">Firma y Aclaración del Expositor</div><div class="c-firma-lbl" style="margin-top:3px;color:#666;">DNI: ____________________</div></div>
       <div class="c-firma-blk"><div class="c-firma-line"></div><div class="c-firma-lbl">P/ BirraFest VII – Organización</div></div>
     </div>
-
-    <hr class="c-sep">
-
-    <div class="c-ribo-titulo">RECIBO DE SEÑA — BirraFest VII</div>
-    <div class="c-ribo-row"><span class="c-ribo-lbl">Recibí de:</span><span class="c-ribo-val">${v(d.nombre)}</span></div>
-    <div class="c-ribo-row"><span class="c-ribo-lbl">La cantidad de:</span><span class="c-ribo-val">${v(d.letras)} (${d.sena?fmt(d.sena):'$ ___________'})</span></div>
-    <div class="c-ribo-row"><span class="c-ribo-lbl">En concepto de:</span><span class="c-ribo-val">Seña por participación en BirraFest VII – Stand: ${v(d.stand)}</span></div>
-    <div class="c-ribo-row"><span class="c-ribo-lbl">Saldo pendiente:</span><span class="c-ribo-val">${d.saldo!==null?fmt(d.saldo):'$ ___________'} — antes del <span class="red">25 de mayo de 2026</span></span></div>
-    <div class="c-ribo-row" style="margin-top:6px;"><span class="c-ribo-lbl">San Miguel de Tucumán,</span><span class="c-ribo-val">${d.fecha}</span></div>
-    <div class="c-firma-row" style="margin-top:14px;">
-      <div class="c-firma-blk"><div class="c-firma-line"></div><div class="c-firma-lbl">Firma Expositor</div></div>
-      <div class="c-firma-blk"><div class="c-firma-line"></div><div class="c-firma-lbl">P/ BirraFest VII</div></div>
-    </div>
+    <p style="text-align:center;font-size:11px;color:#C0392B;font-style:italic;margin-top:16px;">¡Bienvenidos! Gracias por ser parte de BirraFest – 7ma. Edición.</p>
   </div>`;
 }
 
@@ -482,6 +564,7 @@ function sync(){
 }
 
 sync();
+switchTab('contrato');
 </script>
 </body>
 </html>
