@@ -214,9 +214,24 @@
         <label><input type="radio" name="tipo" value="Carpa gastronómica"> Carpa gastro.</label>
         <label><input type="radio" name="tipo" value="Carpa cerveza"> Carpa cerveza</label>
         <label><input type="radio" name="tipo" value="Parrilla"> Parrilla</label>
+        <label><input type="radio" name="tipo" value="Otro"> Otro</label>
+        <label><input type="radio" name="tipo" value="Sponsor"> Sponsor</label>
       </div>
     </div>
     <div class="field"><label>Teléfono de contacto</label><input type="text" id="telefono" placeholder="Ej: 381-123-4567" oninput="sync()"></div>
+    <div style="margin-top:10px;">
+      <div class="card-header" style="margin-bottom:8px; padding-bottom:6px;">▸ Medidas del stand</div>
+      <div class="grid-2">
+        <div class="field">
+          <label>Frente (metros)</label>
+          <input type="number" id="frente" placeholder="Ej: 5" min="0" step="0.5" oninput="sync()">
+        </div>
+        <div class="field">
+          <label>Fondo (metros)</label>
+          <input type="number" id="fondo" placeholder="Ej: 3" min="0" step="0.5" oninput="sync()">
+        </div>
+      </div>
+    </div>
   </div>
 
   <div class="card">
@@ -295,7 +310,7 @@
 
 <script>
 const WEBAPP_URL='https://script.google.com/macros/s/AKfycbymiVWDASr0CAp24vadaIXpBw8TLGB_N6bsdCAoaRXxwXW1FDptk6-kZaFTDhXMetW3HA/exec';
-const TIPOS=["Food Truck","Beer Truck","Carpa gastronómica","Carpa cerveza","Parrilla"];
+const TIPOS=["Food Truck","Beer Truck","Carpa gastronómica","Carpa cerveza","Parrilla","Otro","Sponsor"];
 
 function fechaHoy(){const d=new Date();const m=["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];return `${d.getDate()} de ${m[d.getMonth()]} de ${d.getFullYear()}`;}
 document.getElementById('fecha').value=fechaHoy();
@@ -405,7 +420,7 @@ function getData(){
   const saldo=canon>=sena?canon-sena:null;
   const forma=document.getElementById('forma').value||'';
   const destino=forma==='Transferencia'?document.getElementById('destino').value||'':'';
-  return {fecha:document.getElementById('fecha').value,nombre:document.getElementById('nombre').value||'',cuit:document.getElementById('cuit').value||'',stand:document.getElementById('stand').value||'',telefono:document.getElementById('telefono').value||'',tipoStand:tipo?tipo.value:'',canon,sena,saldo,letras:document.getElementById('letras').value||'',forma,destino};
+  return {fecha:document.getElementById('fecha').value,nombre:document.getElementById('nombre').value||'',cuit:document.getElementById('cuit').value||'',stand:document.getElementById('stand').value||'',telefono:document.getElementById('telefono').value||'',tipoStand:tipo?tipo.value:'',frente:document.getElementById('frente').value||'',fondo:document.getElementById('fondo').value||'',canon,sena,saldo,letras:document.getElementById('letras').value||'',forma,destino};
 }
 
 function validar(d){
@@ -515,7 +530,8 @@ function buildContrato(d){
       <div class="c-ficha-row"><span class="c-ficha-lbl">Titular</span><span class="c-ficha-val">${v(d.nombre,'________________________________')}</span></div>
       <div class="c-ficha-row"><span class="c-ficha-lbl">DNI / CUIT</span><span class="c-ficha-val">${v(d.cuit,'________________________________')}</span></div>
       <div class="c-ficha-row"><span class="c-ficha-lbl">Nombre de fantasía</span><span class="c-ficha-val">${v(d.stand,'________________________________')}</span></div>
-      <div class="c-ficha-row"><span class="c-ficha-lbl">Tipo de stand</span><span class="c-ficha-val">${v(d.tipoStand,'☐ Food Truck  ☐ Beer Truck  ☐ Carpa gastronómica  ☐ Carpa cerveza  ☐ Parrilla')}</span></div>
+      <div class="c-ficha-row"><span class="c-ficha-lbl">Tipo de stand</span><span class="c-ficha-val">${v(d.tipoStand,'☐ Food Truck  ☐ Beer Truck  ☐ Carpa gastronómica  ☐ Carpa cerveza  ☐ Parrilla  ☐ Otro  ☐ Sponsor')}</span></div>
+      <div class="c-ficha-row"><span class="c-ficha-lbl">Medidas del stand</span><span class="c-ficha-val">${d.frente||'___'} m (frente) × ${d.fondo||'___'} m (fondo)</span></div>
       <div class="c-ficha-row"><span class="c-ficha-lbl">Teléfono de contacto</span><span class="c-ficha-val">${v(d.telefono,'________________________________')}</span></div>
       <div class="c-ficha-row"><span class="c-ficha-lbl">Fecha de emisión</span><span class="c-ficha-val">${d.fecha}</span></div>
     </div>
@@ -707,6 +723,8 @@ function cargarRegistro(idx){
   document.getElementById('cuit').value     = r.cuit      || '';
   document.getElementById('stand').value    = r.stand     || '';
   document.getElementById('telefono').value = r.telefono  || '';
+  document.getElementById('frente').value    = r.frente     || '';
+  document.getElementById('fondo').value    = r.fondo     || '';
   document.getElementById('canon').value    = r.canon     || '';
   document.getElementById('sena').value     = r.sena      || '';
   document.getElementById('letras').value   = r.letras    || '';
