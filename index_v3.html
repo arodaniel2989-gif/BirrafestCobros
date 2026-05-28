@@ -1,0 +1,1178 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BirraFest VII — Gestión de Expositores</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --red:#C0392B;--red-dark:#a93226;--green:#1a7a3a;--blue:#1A5276;
+  --dark:#2C3E50;--gray-bg:#f2f2f2;--gray-border:#ddd;
+  --gray-text:#666;--text:#111;--white:#fff;
+  --radius:8px;--radius-lg:12px;
+}
+body{font-family:Arial,sans-serif;background:var(--gray-bg);color:var(--text);min-height:100vh;}
+
+/* ── HEADER ── */
+header{background:var(--red);color:white;padding:0.8rem 1.5rem;display:flex;align-items:center;justify-content:space-between;gap:1rem;}
+header h1{font-size:16px;font-weight:700;}
+header p{font-size:11px;opacity:0.8;margin-top:2px;}
+.btn-reimprimir-hdr{background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.4);color:white;border-radius:var(--radius);padding:6px 12px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;display:flex;align-items:center;gap:6px;transition:background 0.15s;}
+.btn-reimprimir-hdr:hover{background:rgba(255,255,255,0.25);}
+
+/* ── LAYOUT PRINCIPAL ── */
+.app{display:grid;grid-template-rows:auto auto 1fr;height:calc(100vh - 52px);}
+.nav{display:flex;gap:3px;background:var(--white);border-bottom:1px solid var(--gray-border);padding:6px 1.2rem;}
+.nav-tab{padding:7px 18px;font-size:13px;font-weight:700;border-radius:var(--radius);border:none;background:transparent;color:var(--gray-text);cursor:pointer;transition:all 0.15s;}
+.nav-tab.active{background:var(--red);color:white;}
+.nav-tab:not(.active):hover{background:var(--gray-bg);}
+.panels{overflow:hidden;}
+.panel{display:none;height:100%;}
+.panel.active{display:grid;}
+
+/* ── PANEL 1: NUEVO EXPOSITOR (2 col) ── */
+#panel-expositor{grid-template-columns:300px 1fr;gap:0;overflow:hidden;}
+.col-form{overflow-y:auto;border-right:1px solid var(--gray-border);padding:1rem;display:flex;flex-direction:column;gap:0.75rem;background:var(--white);}
+.col-emision{overflow-y:auto;padding:1rem;display:flex;flex-direction:column;gap:0.75rem;background:var(--gray-bg);}
+
+/* ── PANEL 2: PAGOS DE SALDO (sidebar + main) ── */
+#panel-saldos{grid-template-columns:280px 1fr;gap:0;overflow:hidden;}
+.col-pago{overflow-y:auto;border-right:1px solid var(--gray-border);padding:1rem;display:flex;flex-direction:column;gap:0.75rem;background:var(--white);}
+.col-control{overflow:hidden;display:flex;flex-direction:column;background:var(--gray-bg);}
+.control-top{padding:0.8rem 1rem 0.6rem;border-bottom:1px solid var(--gray-border);background:var(--white);}
+.control-body{flex:1;overflow:hidden;display:grid;grid-template-columns:1fr 220px;gap:0;}
+.tabla-wrap{overflow-y:auto;padding:0.8rem 0.8rem 0.8rem 1rem;}
+.historial-panel{border-left:1px solid var(--gray-border);overflow-y:auto;padding:0.8rem;background:var(--white);}
+
+/* ── CARDS ── */
+.card{background:var(--white);border:1px solid var(--gray-border);border-radius:var(--radius-lg);padding:0.9rem 1.1rem;}
+.card.on-gray{background:var(--white);}
+.card-hdr{font-size:12px;font-weight:700;color:var(--red);border-bottom:1px solid var(--gray-border);padding-bottom:0.5rem;margin-bottom:0.75rem;display:flex;align-items:center;gap:6px;}
+
+/* ── FIELDS ── */
+.field{display:flex;flex-direction:column;gap:3px;margin-bottom:6px;}
+.field label{font-size:11px;color:var(--gray-text);font-weight:600;}
+.field input,.field select{font-size:13px;padding:6px 9px;border:1px solid var(--gray-border);border-radius:var(--radius);background:#fafafa;color:var(--text);width:100%;transition:border-color 0.15s;}
+.field input:focus,.field select:focus{outline:none;border-color:var(--red);background:var(--white);}
+.field input[readonly]{background:#f0f0f0;color:var(--gray-text);cursor:default;}
+.field input.calculated{background:#e8f5e9;color:var(--green);font-weight:700;border-color:#81c784;cursor:default;}
+.field input.error{background:#fdecea;color:var(--red);border-color:#e57373;}
+.field .hint{font-size:10px;color:var(--gray-text);}
+.field .hint.warn{color:var(--red);}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;}
+
+/* ── TIPO STAND ── */
+.tipo-group{display:flex;flex-wrap:wrap;gap:5px;margin-top:3px;}
+.tipo-group label{padding:5px 9px;border:1px solid var(--gray-border);border-radius:var(--radius);font-size:11px;cursor:pointer;background:#fafafa;transition:all 0.15s;user-select:none;}
+.tipo-group input[type=radio]{display:none;}
+.tipo-group label.selected{background:#fdecea;border-color:var(--red);color:var(--red);font-weight:700;}
+
+/* ── RESUMEN BAR ── */
+.resumen-bar{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:8px;}
+.res-card{background:var(--gray-bg);border-radius:var(--radius);padding:0.5rem 0.4rem;text-align:center;}
+.res-card .r-lbl{font-size:9px;color:var(--gray-text);margin-bottom:2px;}
+.res-card .r-val{font-size:14px;font-weight:700;}
+.res-card.highlight .r-val{color:var(--green);}
+.res-card.warn .r-val{color:var(--red);}
+
+/* ── INFO BOX (saldo pendiente stand) ── */
+.stand-info{background:#f0f7ff;border:1px solid #b3d4f5;border-radius:var(--radius);padding:0.6rem 0.8rem;display:none;margin-bottom:6px;}
+.stand-info.visible{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;}
+.si-item{text-align:center;}
+.si-lbl{font-size:9px;color:var(--gray-text);margin-bottom:2px;}
+.si-val{font-size:13px;font-weight:700;}
+.si-val.rojo{color:var(--red);}
+.si-val.verde{color:var(--green);}
+
+/* ── BOTONES ── */
+.btn{padding:8px 14px;font-size:12px;font-weight:700;border-radius:var(--radius);border:1px solid var(--gray-border);background:var(--white);color:var(--text);cursor:pointer;display:inline-flex;align-items:center;gap:6px;transition:background 0.15s;white-space:nowrap;}
+.btn:hover{background:var(--gray-bg);}
+.btn.primary{background:var(--red);border-color:var(--red);color:white;}
+.btn.primary:hover{background:var(--red-dark);}
+.btn.sm{padding:5px 10px;font-size:11px;}
+.btn:disabled{opacity:0.5;cursor:not-allowed;}
+.btn-group{display:flex;gap:6px;flex-wrap:wrap;}
+
+/* ── MÉTRICAS ── */
+.metrics-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
+.metric{background:var(--white);border:1px solid var(--gray-border);border-radius:var(--radius);padding:0.6rem 0.8rem;text-align:center;}
+.metric .m-lbl{font-size:10px;color:var(--gray-text);margin-bottom:3px;}
+.metric .m-val{font-size:15px;font-weight:700;}
+.metric.m-blue .m-val{color:var(--blue);}
+.metric.m-green .m-val{color:var(--green);}
+.metric.m-red .m-val{color:var(--red);}
+
+/* ── SEARCH ── */
+.search-box{display:flex;align-items:center;gap:6px;background:#fafafa;border:1px solid var(--gray-border);border-radius:var(--radius);padding:5px 9px;margin-bottom:8px;}
+.search-box input{border:none;background:transparent;font-size:12px;color:var(--text);flex:1;outline:none;}
+.search-icon{font-size:14px;color:var(--gray-text);}
+
+/* ── TABLA CONTROL ── */
+.ctrl-table{width:100%;border-collapse:collapse;font-size:12px;}
+.ctrl-table th{background:var(--dark);color:white;padding:7px 8px;text-align:left;font-size:11px;position:sticky;top:0;}
+.ctrl-table td{padding:7px 8px;border-bottom:0.5px solid var(--gray-border);vertical-align:middle;}
+.ctrl-table tr:hover td{background:#fdf5f5;cursor:pointer;}
+.ctrl-table tr.selected td{background:#fdecea;}
+.ctrl-table tr:last-child td{border-bottom:none;}
+.estado{display:inline-block;padding:2px 7px;border-radius:10px;font-size:10px;font-weight:700;}
+.est-rojo{background:#fdecea;color:var(--red);}
+.est-amarillo{background:#fff8e1;color:#e67e22;}
+.ctrl-empty{padding:2rem;text-align:center;color:var(--gray-text);font-size:12px;}
+
+/* ── HISTORIAL ── */
+.hist-hdr{font-size:12px;font-weight:700;color:var(--dark);margin-bottom:0.6rem;padding-bottom:0.5rem;border-bottom:1px solid var(--gray-border);}
+.hist-stand-name{font-size:13px;font-weight:700;color:var(--red);margin-bottom:4px;}
+.hist-empty{font-size:11px;color:var(--gray-text);text-align:center;padding:1.5rem 0;font-style:italic;}
+.hist-item{display:flex;align-items:baseline;gap:5px;padding:6px 0;border-bottom:0.5px solid var(--gray-border);}
+.hist-item:last-of-type{border-bottom:none;}
+.hist-fecha{font-size:10px;color:var(--gray-text);min-width:58px;}
+.hist-tipo{font-size:10px;font-weight:700;padding:1px 6px;border-radius:3px;}
+.hist-sena{background:#e8f0fb;color:var(--blue);}
+.hist-saldo-tipo{background:#e8f5e9;color:var(--green);}
+.hist-monto{margin-left:auto;font-size:11px;font-weight:700;}
+.hist-forma{font-size:10px;color:var(--gray-text);}
+.hist-footer{border-top:1px solid var(--gray-border);margin-top:8px;padding-top:8px;}
+.hist-footer-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;}
+.hist-footer-lbl{font-size:10px;color:var(--gray-text);}
+.hist-footer-val{font-size:12px;font-weight:700;}
+.hist-placeholder{display:flex;align-items:center;justify-content:center;height:100%;min-height:120px;font-size:12px;color:var(--gray-text);text-align:center;padding:1rem;}
+
+/* ── TOAST ── */
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);padding:10px 20px;border-radius:var(--radius);font-size:12px;font-weight:700;z-index:9999;display:none;align-items:center;gap:8px;white-space:nowrap;}
+.toast.show{display:flex;}
+.toast.success{background:var(--green);color:white;}
+.toast.error{background:var(--red);color:white;}
+
+/* ── MODAL REIMPRIMIR ── */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:1000;align-items:center;justify-content:center;}
+.modal-overlay.show{display:flex;}
+.modal{background:white;border-radius:var(--radius-lg);width:90%;max-width:480px;max-height:80vh;display:flex;flex-direction:column;overflow:hidden;}
+.modal-hdr{padding:0.9rem 1.2rem;border-bottom:1px solid var(--gray-border);display:flex;align-items:center;justify-content:space-between;}
+.modal-hdr h3{font-size:14px;font-weight:700;}
+.modal-close{background:none;border:none;font-size:20px;cursor:pointer;color:var(--gray-text);line-height:1;}
+.modal-search{padding:0.7rem 1rem;border-bottom:1px solid var(--gray-border);}
+.modal-search input{width:100%;padding:6px 10px;border:1px solid var(--gray-border);border-radius:var(--radius);font-size:13px;}
+.modal-search input:focus{outline:none;border-color:var(--red);}
+.modal-list{overflow-y:auto;flex:1;}
+.modal-item{padding:0.7rem 1.2rem;border-bottom:0.5px solid var(--gray-border);cursor:pointer;transition:background 0.1s;}
+.modal-item:hover{background:var(--gray-bg);}
+.modal-item:last-child{border-bottom:none;}
+.mi-stand{font-size:13px;font-weight:700;}
+.mi-titular{font-size:11px;color:var(--gray-text);margin-top:2px;}
+.mi-fecha{font-size:10px;color:var(--gray-text);float:right;}
+.modal-empty,.modal-loading{padding:2rem;text-align:center;color:var(--gray-text);font-size:13px;}
+
+/* ── MODAL DOCUMENTOS ── */
+.modal-docs-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:1000;align-items:center;justify-content:center;}
+.modal-docs-overlay.show{display:flex;}
+.modal-docs-box{background:white;border-radius:var(--radius-lg);width:94%;max-width:500px;overflow:hidden;}
+.modal-docs-hdr{background:var(--dark);color:white;padding:0.8rem 1.2rem;display:flex;align-items:center;justify-content:space-between;}
+.modal-docs-hdr h3{font-size:14px;font-weight:700;}
+.modal-docs-hdr button{background:none;border:none;color:rgba(255,255,255,0.7);font-size:18px;cursor:pointer;line-height:1;}
+.modal-docs-body{padding:1rem 1.2rem;}
+.modal-docs-stand{font-size:13px;font-weight:700;color:var(--text);margin-bottom:12px;}
+.docs-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:1rem;}
+.doc-card{background:var(--gray-bg);border:1px solid var(--gray-border);border-radius:var(--radius);padding:8px;text-align:center;}
+.doc-card-lbl{font-size:10px;color:var(--gray-text);margin-bottom:6px;}
+.doc-lines{display:flex;flex-direction:column;gap:3px;}
+.dl{height:4px;background:#ccc;border-radius:2px;}
+.dl.red{background:#e0b0b0;}
+.dl.s{width:55%;}
+.dl.xs{width:35%;margin:0 auto;}
+.dl.cut{border-top:1px dashed #bbb;height:0;margin:4px 0;}
+.modal-docs-footer{display:flex;gap:6px;justify-content:flex-end;flex-wrap:wrap;}
+
+/* ── DOCUMENTOS IMPRIMIBLES (styles conservados) ── */
+.recibos-sheet{background:white;display:flex;flex-direction:column;}
+.recibo{padding:22px 28px;color:#111;font-family:Arial,sans-serif;font-size:11px;line-height:1.55;}
+.r-titulo{text-align:center;font-size:17px;font-weight:700;color:#C0392B;margin-bottom:2px;}
+.r-sub{text-align:center;font-size:11px;color:#555;margin-bottom:2px;}
+.r-lugar{text-align:center;font-size:10px;color:#888;margin-bottom:12px;}
+.r-sec{font-size:10px;font-weight:700;color:#C0392B;border-bottom:1.5px solid #C0392B;margin:10px 0 6px;padding-bottom:2px;text-transform:uppercase;letter-spacing:0.04em;}
+.r-row{display:flex;gap:6px;margin-bottom:5px;align-items:baseline;}
+.r-lbl{font-size:10px;font-weight:700;color:#333;white-space:nowrap;min-width:105px;}
+.r-val{font-size:11px;color:#111;border-bottom:0.5px solid #bbb;flex:1;min-height:14px;padding-bottom:1px;}
+.r-val.fx{border-bottom:none;font-weight:700;color:#C0392B;}
+.r-badge{display:inline-block;background:#f0f0f0;border:1px solid #ccc;border-radius:3px;padding:1px 6px;font-size:10px;font-weight:700;color:#333;margin-right:3px;}
+.r-badge.sel{background:#C0392B;border-color:#C0392B;color:white;}
+.r-canon{display:flex;gap:10px;background:#f8f8f8;border:1px solid #e0e0e0;border-radius:4px;padding:6px 10px;margin:6px 0;}
+.r-ci{flex:1;text-align:center;}
+.r-ci .cl{font-size:9px;color:#777;margin-bottom:2px;}
+.r-ci .cv{font-size:12px;font-weight:700;color:#111;}
+.r-ci.cg .cv{color:#1a7a3a;}
+.r-saldo{border-left:3px solid #C0392B;padding-left:8px;margin:6px 0;}
+.r-sig{display:flex;gap:20px;margin-top:16px;}
+.r-sb{flex:1;display:flex;flex-direction:column;align-items:center;}
+.r-sl{width:100%;border-bottom:1px solid #333;margin-bottom:4px;height:30px;}
+.r-slbl{font-size:9px;font-weight:700;color:#333;text-align:center;}
+.cut-line{display:flex;align-items:center;justify-content:center;gap:8px;padding:6px 16px;border-top:1.5px dashed #aaa;border-bottom:1.5px dashed #aaa;background:#fafafa;font-size:10px;color:#aaa;font-style:italic;}
+.r-gracias{text-align:center;font-size:10px;color:#C0392B;font-style:italic;margin-top:10px;}
+.contrato{background:white;padding:30px 34px;color:#111;font-family:Arial,sans-serif;font-size:11px;line-height:1.7;}
+.c-titulo{text-align:center;font-size:14px;font-weight:700;color:#C0392B;margin-bottom:3px;text-transform:uppercase;}
+.c-sub{text-align:center;font-size:12px;font-weight:700;margin-bottom:3px;}
+.c-lugar{text-align:center;font-size:10px;color:#666;margin-bottom:14px;font-style:italic;}
+.c-ficha{border:1px solid #ccc;border-radius:4px;margin-bottom:12px;overflow:hidden;}
+.c-ficha-hdr{background:#2C3E50;color:white;padding:4px 10px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;}
+.c-ficha-row{display:flex;border-bottom:0.5px solid #e0e0e0;}
+.c-ficha-row:last-child{border-bottom:none;}
+.c-ficha-lbl{background:#f0f0f0;font-weight:700;padding:4px 8px;font-size:10px;min-width:130px;border-right:0.5px solid #e0e0e0;}
+.c-ficha-val{padding:4px 8px;font-size:11px;flex:1;}
+.c-sec{font-size:11px;font-weight:700;color:#C0392B;border-bottom:1.5px solid #C0392B;margin:12px 0 5px;padding-bottom:2px;text-transform:uppercase;letter-spacing:0.04em;}
+.c-body{font-size:11px;text-align:justify;margin-bottom:5px;}
+.c-ol{padding-left:18px;margin-bottom:5px;}
+.c-ol li{font-size:11px;margin-bottom:3px;text-align:justify;}
+.c-ul{padding-left:18px;margin-bottom:5px;}
+.c-ul li{font-size:11px;margin-bottom:3px;list-style:disc;text-align:justify;}
+.c-firma-row{display:flex;gap:30px;margin-top:18px;}
+.c-firma-blk{flex:1;text-align:center;}
+.c-firma-line{border-bottom:1px solid #333;margin-bottom:4px;height:30px;}
+.c-firma-lbl{font-size:9px;font-weight:700;color:#333;}
+.c-subsec{font-size:11px;font-weight:700;color:#2C3E50;margin:10px 0 4px;}
+.c-table{width:100%;border-collapse:collapse;margin:8px 0 10px;font-size:11px;}
+.c-table th{background:#C0392B;color:white;padding:5px 8px;text-align:center;font-size:10px;}
+.c-table td{padding:4px 8px;border:0.5px solid #ccc;text-align:center;}
+.c-table td:first-child{text-align:left;}
+.c-table tr:nth-child(even) td{background:#fafafa;}
+.red{color:#C0392B;font-weight:700;}
+.anexo{background:white;padding:30px 34px;font-family:Arial,sans-serif;font-size:11px;color:#111;}
+.a-titulo{text-align:center;font-size:14px;font-weight:700;color:#C0392B;margin-bottom:3px;text-transform:uppercase;}
+.a-sub{text-align:center;font-size:11px;font-style:italic;color:#555;margin-bottom:14px;}
+.a-dato{display:flex;gap:8px;margin-bottom:7px;align-items:baseline;}
+.a-lbl{font-weight:700;font-size:11px;min-width:130px;}
+.a-val{font-size:11px;border-bottom:0.5px solid #bbb;flex:1;min-height:13px;}
+.a-item{display:flex;gap:8px;margin-bottom:14px;align-items:center;}
+.a-num{font-size:14px;font-weight:700;color:#C0392B;min-width:22px;}
+.a-line{flex:1;border-bottom:1px solid #bbb;height:18px;}
+.a-nota{font-size:10px;font-style:italic;color:#777;text-align:center;margin:8px 0 18px;}
+
+/* ── PRINT ── */
+@media print{
+  header,.nav,.modal-overlay,.modal-docs-overlay,.toast{display:none!important;}
+  body{background:white;margin:0;padding:0;}
+  .app{display:block;height:auto;}
+  #print-zone{display:block!important;}
+  .print-page{page-break-after:always;}
+  .print-page:last-child{page-break-after:avoid;}
+  .recibos-sheet{height:100vh;display:flex;flex-direction:column;justify-content:space-between;}
+  .recibo{flex:1;}
+  @page{size:A4;margin:0;}
+}
+#print-zone{display:none;}
+
+/* ── RESPONSIVE ── */
+@media(max-width:700px){
+  #panel-expositor,#panel-saldos{grid-template-columns:1fr;}
+  .col-form,.col-pago{border-right:none;border-bottom:1px solid var(--gray-border);}
+  .control-body{grid-template-columns:1fr;}
+  .historial-panel{border-left:none;border-top:1px solid var(--gray-border);}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>🍺 BirraFest VII — Gestión de Expositores</h1>
+    <p>Parque Avellaneda · San Miguel de Tucumán · 30 y 31 de mayo de 2026</p>
+  </div>
+  <button class="btn-reimprimir-hdr" onclick="abrirModal()">🔄 Reimprimir expositor</button>
+</header>
+
+<!-- ── MODAL REIMPRIMIR ── -->
+<div class="modal-overlay" id="modal-overlay" onclick="if(event.target===this)cerrarModalBtn()">
+  <div class="modal">
+    <div class="modal-hdr">
+      <h3>🔍 Seleccionar expositor para reimprimir</h3>
+      <button class="modal-close" onclick="cerrarModalBtn()">✕</button>
+    </div>
+    <div class="modal-search">
+      <input type="text" id="modal-buscar" placeholder="Buscar por nombre de stand o titular..." oninput="filtrarModal()">
+    </div>
+    <div class="modal-list" id="modal-lista">
+      <div class="modal-loading">Cargando expositores...</div>
+    </div>
+  </div>
+</div>
+
+<!-- ── MODAL DOCUMENTOS GENERADOS ── -->
+<div class="modal-docs-overlay" id="modal-docs-overlay" onclick="if(event.target===this)cerrarModalDocs()">
+  <div class="modal-docs-box">
+    <div class="modal-docs-hdr">
+      <h3>📄 Documentos generados</h3>
+      <button onclick="cerrarModalDocs()">✕</button>
+    </div>
+    <div class="modal-docs-body">
+      <div class="modal-docs-stand" id="modal-docs-stand"></div>
+      <div class="docs-grid">
+        <div class="doc-card">
+          <div class="doc-card-lbl">Contrato</div>
+          <div class="doc-lines">
+            <div class="dl red xs"></div><div class="dl"></div><div class="dl s"></div>
+            <div class="dl"></div><div class="dl s"></div><div class="dl"></div>
+          </div>
+        </div>
+        <div class="doc-card">
+          <div class="doc-card-lbl">Anexo I</div>
+          <div class="doc-lines">
+            <div class="dl red xs"></div><div class="dl s" style="margin:0 auto;"></div>
+            <div style="height:8px;border-bottom:0.5px solid #ccc;margin-top:4px;"></div>
+            <div style="height:8px;border-bottom:0.5px solid #ccc;margin-top:6px;"></div>
+            <div style="height:8px;border-bottom:0.5px solid #ccc;margin-top:6px;"></div>
+          </div>
+        </div>
+        <div class="doc-card">
+          <div class="doc-card-lbl">Recibo (× 2)</div>
+          <div class="doc-lines">
+            <div class="dl red xs"></div><div class="dl"></div><div class="dl s"></div>
+            <div class="dl cut"></div>
+            <div class="dl red xs"></div><div class="dl"></div><div class="dl s"></div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-docs-footer">
+        <button class="btn sm" onclick="cerrarModalDocs()">Cancelar</button>
+        <button class="btn sm" onclick="soloVerContrato()">👁 Ver contrato</button>
+        <button class="btn sm" onclick="soloVerRecibo()">👁 Ver recibo</button>
+        <button class="btn sm primary" onclick="imprimirTodo()">🖨 Imprimir todo</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── APP ── -->
+<div class="app">
+  <div class="nav">
+    <button class="nav-tab active" onclick="switchTab('expositor')">📋 Nuevo expositor</button>
+    <button class="nav-tab" onclick="switchTab('saldos')">💰 Pagos de saldo</button>
+  </div>
+
+  <div class="panels">
+
+    <!-- ══ PANEL 1: NUEVO EXPOSITOR ══ -->
+    <div class="panel active" id="panel-expositor">
+
+      <!-- Columna izquierda: formulario -->
+      <div class="col-form">
+        <div class="card">
+          <div class="card-hdr">▸ Datos del expositor</div>
+          <div class="g2">
+            <div class="field"><label>Titular</label><input type="text" id="nombre" placeholder="Hernán Lorusso / El Nogal SAS" oninput="syncDocs()"></div>
+            <div class="field"><label>DNI / CUIT</label><input type="text" id="cuit" placeholder="20-12345678-9" oninput="syncDocs()"></div>
+          </div>
+          <div class="field"><label>Nombre de fantasía</label><input type="text" id="stand" placeholder="Ej: Pipa, Walnuss" oninput="syncDocs()"></div>
+          <div class="field">
+            <label>Tipo de stand</label>
+            <div class="tipo-group" id="tipo-group">
+              <label><input type="radio" name="tipo" value="Food Truck"> Food Truck</label>
+              <label><input type="radio" name="tipo" value="Beer Truck"> Beer Truck</label>
+              <label><input type="radio" name="tipo" value="Carpa gastronómica"> Carpa gastro.</label>
+              <label><input type="radio" name="tipo" value="Carpa cerveza"> Carpa cerveza</label>
+              <label><input type="radio" name="tipo" value="Parrilla"> Parrilla</label>
+              <label><input type="radio" name="tipo" value="Otro"> Otro</label>
+              <label><input type="radio" name="tipo" value="Sponsor"> Sponsor</label>
+            </div>
+          </div>
+          <div class="field"><label>Teléfono</label><input type="text" id="telefono" placeholder="381-123-4567" oninput="syncDocs()"></div>
+          <div class="g2">
+            <div class="field"><label>Frente (m)</label><input type="number" id="frente" placeholder="5" min="0" step="0.5" oninput="syncDocs()"></div>
+            <div class="field"><label>Fondo (m)</label><input type="number" id="fondo" placeholder="3" min="0" step="0.5" oninput="syncDocs()"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Columna derecha: canon + emisión -->
+      <div class="col-emision">
+        <div class="card">
+          <div class="card-hdr">▸ Canon y pago</div>
+          <div class="g3">
+            <div class="field"><label>Canon total ($)</label><input type="number" id="canon" placeholder="850000" min="0" oninput="calcSaldo();syncDocs()"><span class="hint">Monto acordado</span></div>
+            <div class="field"><label>Seña ($)</label><input type="number" id="sena" placeholder="200000" min="0" oninput="onSenaInput()"></div>
+            <div class="field"><label>Saldo pendiente</label><input type="text" id="saldo" readonly class="calculated" placeholder="—"><span class="hint" id="saldo-hint">Se calcula automáticamente</span></div>
+          </div>
+          <div class="field"><label>Seña en letras</label><input type="text" id="letras" placeholder="Se completa automáticamente" oninput="syncDocs()"><span class="hint">Editable manualmente si es necesario</span></div>
+          <div class="g2">
+            <div class="field">
+              <label>Forma de pago</label>
+              <select id="forma" onchange="onFormaChange()">
+                <option value="">Seleccionar...</option>
+                <option value="Efectivo">Efectivo</option>
+                <option value="Transferencia">Transferencia</option>
+                <option value="Otro">Otro</option>
+              </select>
+            </div>
+            <div class="field" id="field-destino" style="display:none;">
+              <label>Destino de transferencia</label>
+              <input type="text" id="destino" placeholder="Ej: Claudio Navarro" oninput="syncDocs()">
+            </div>
+          </div>
+          <div class="resumen-bar">
+            <div class="res-card"><div class="r-lbl">Canon</div><div class="r-val" id="sum-canon">—</div></div>
+            <div class="res-card"><div class="r-lbl">Seña</div><div class="r-val" id="sum-sena">—</div></div>
+            <div class="res-card highlight" id="sum-card-saldo"><div class="r-lbl">Saldo a cobrar</div><div class="r-val" id="sum-saldo">—</div></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-hdr">▸ Emisión</div>
+          <div class="g2" style="margin-bottom:12px;">
+            <div class="field"><label>Fecha de emisión</label><input type="text" id="fecha" readonly></div>
+            <div class="field"><label>Fecha límite saldo</label><input type="text" value="25 de mayo de 2026" readonly></div>
+          </div>
+          <div class="btn-group">
+            <button class="btn primary" id="btn-guardar" onclick="guardarYGenerarDocs()">💾 Guardar y generar documentos</button>
+            <button class="btn" onclick="soloImprimirRecibo()">🧾 Solo recibo</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ PANEL 2: PAGOS DE SALDO ══ -->
+    <div class="panel" id="panel-saldos">
+
+      <!-- Columna izquierda: formulario pago -->
+      <div class="col-pago">
+        <div class="card">
+          <div class="card-hdr">▸ Registrar pago</div>
+          <div class="field">
+            <label>Stand / Expositor</label>
+            <select id="sl-stand" onchange="onSelectStand()">
+              <option value="">Seleccionar stand...</option>
+            </select>
+            <span class="hint" id="sl-hint-carga">Cargando expositores...</span>
+          </div>
+          <div class="stand-info" id="stand-info">
+            <div class="si-item"><div class="si-lbl">Canon total</div><div class="si-val" id="si-canon">—</div></div>
+            <div class="si-item"><div class="si-lbl">Ya cobrado</div><div class="si-val" id="si-cobrado">—</div></div>
+            <div class="si-item"><div class="si-lbl">Pendiente</div><div class="si-val rojo" id="si-pendiente">—</div></div>
+          </div>
+          <div class="g2">
+            <div class="field"><label>Monto del pago ($)</label><input type="number" id="sl-monto" placeholder="Ej: 650000" min="0" oninput="onSlMontoInput()"></div>
+            <div class="field"><label>Monto en letras</label><input type="text" id="sl-letras" readonly style="background:#f0f0f0;font-size:11px;"></div>
+          </div>
+          <div class="field">
+            <label>Forma de pago</label>
+            <select id="sl-forma" onchange="onSlFormaChange()">
+              <option value="">Seleccionar...</option>
+              <option value="Efectivo">Efectivo</option>
+              <option value="Transferencia">Transferencia</option>
+              <option value="Otro">Otro</option>
+            </select>
+          </div>
+          <div class="field" id="sl-field-destino" style="display:none;">
+            <label>Destino de transferencia</label>
+            <input type="text" id="sl-destino" placeholder="Ej: Claudio Navarro">
+          </div>
+          <div class="field"><label>Observaciones</label><input type="text" id="sl-obs" placeholder="Ej: 2° cuota, pago parcial..."></div>
+          <div class="btn-group" style="flex-direction:column;gap:5px;margin-top:4px;">
+            <button class="btn primary" id="btn-sl-guardar" onclick="registrarPagoSaldo()" style="justify-content:center;">💾 Registrar y emitir recibo</button>
+            <button class="btn" onclick="soloImprimirReciboSaldo()" style="justify-content:center;">🖨 Solo imprimir recibo</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Columna derecha: control -->
+      <div class="col-control">
+        <div class="control-top">
+          <div class="metrics-row">
+            <div class="metric m-blue"><div class="m-lbl">Total esperado</div><div class="m-val" id="rc-esperado">—</div></div>
+            <div class="metric m-green"><div class="m-lbl">Total cobrado</div><div class="m-val" id="rc-cobrado">—</div></div>
+            <div class="metric m-red"><div class="m-lbl">Total pendiente</div><div class="m-val" id="rc-pendiente">—</div></div>
+          </div>
+        </div>
+        <div class="control-body">
+          <div class="tabla-wrap">
+            <div class="search-box">
+              <span class="search-icon">🔍</span>
+              <input type="text" id="ctrl-buscar" placeholder="Buscar stand..." oninput="filtrarTabla()">
+            </div>
+            <div id="ctrl-loading" class="ctrl-empty">Cargá la pestaña para ver el control.</div>
+            <table class="ctrl-table" id="ctrl-table" style="display:none;">
+              <thead>
+                <tr>
+                  <th>Stand</th>
+                  <th>Canon</th>
+                  <th>Cobrado</th>
+                  <th>Pendiente</th>
+                  <th>Estado</th>
+                </tr>
+              </thead>
+              <tbody id="ctrl-tbody"></tbody>
+            </table>
+          </div>
+          <div class="historial-panel" id="historial-panel">
+            <div class="hist-placeholder">← Hacé clic en un stand para ver su historial de pagos</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /panels -->
+</div><!-- /app -->
+
+<!-- ZONA DE IMPRESIÓN -->
+<div id="print-zone">
+  <div class="print-page" id="print-contrato"></div>
+  <div class="print-page" id="print-anexo"></div>
+  <div class="print-page recibos-sheet" id="print-recibo"></div>
+  <div class="print-page recibos-sheet" id="print-recibo-saldo"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const WEBAPP_URL='https://script.google.com/macros/s/AKfycbx4MNzs0L7w3DB1qlPR5U8GZiVJo09PChOnOWCSlVsEKDdrTrnbGbdkG3wC5XhYjTUjvQ/exec';
+const TIPOS=['Food Truck','Beer Truck','Carpa gastronómica','Carpa cerveza','Parrilla','Otro','Sponsor'];
+
+// ── INIT ──
+function fechaHoy(){const d=new Date();const m=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];return d.getDate()+' de '+m[d.getMonth()]+' de '+d.getFullYear();}
+document.getElementById('fecha').value=fechaHoy();
+
+document.querySelectorAll('#tipo-group input[type=radio]').forEach(r=>{
+  r.addEventListener('change',()=>{
+    document.querySelectorAll('#tipo-group label').forEach(l=>l.classList.remove('selected'));
+    r.closest('label').classList.add('selected');
+    syncDocs();
+  });
+});
+
+// ── TABS ──
+let tabActiva='expositor';
+function switchTab(tab){
+  tabActiva=tab;
+  document.querySelectorAll('.nav-tab').forEach((t,i)=>t.classList.toggle('active',['expositor','saldos'][i]===tab));
+  ['expositor','saldos'].forEach(p=>document.getElementById('panel-'+p).classList.toggle('active',p===tab));
+  if(tab==='saldos') iniciarPanelSaldos();
+}
+
+// ── TOAST ──
+function showToast(msg,type='success'){const t=document.getElementById('toast');t.textContent=msg;t.className='toast show '+type;setTimeout(()=>{t.className='toast';},3500);}
+
+// ── HELPERS ──
+function v(val,ph='...'){if(!val&&val!==0)return '<span style="color:#bbb;font-style:italic;">'+ph+'</span>';return val;}
+function fmt(n){if(!n&&n!==0)return '—';return '$ '+Number(n).toLocaleString('es-AR');}
+const UN=['','uno','dos','tres','cuatro','cinco','seis','siete','ocho','nueve','diez','once','doce','trece','catorce','quince','dieciséis','diecisiete','dieciocho','diecinueve','veinte','veintiuno','veintidós','veintitrés','veinticuatro','veinticinco','veintiséis','veintisiete','veintiocho','veintinueve'];
+const DE=['','','veinte','treinta','cuarenta','cincuenta','sesenta','setenta','ochenta','noventa'];
+const CE=['','cien','doscientos','trescientos','cuatrocientos','quinientos','seiscientos','setecientos','ochocientos','novecientos'];
+function numLetras(n){n=Math.floor(n);if(n===0)return 'cero';let r='';if(n>=1000000){const m=Math.floor(n/1000000);r+=(m===1?'un millón':numLetras(m)+' millones')+' ';n%=1000000;}if(n>=1000){const m=Math.floor(n/1000);r+=(m===1?'mil':numLetras(m)+' mil')+' ';n%=1000;}if(n>=100){r+=(n===100?'cien':CE[Math.floor(n/100)])+' ';n%=100;}if(n>0){r+=n<30?UN[n]:DE[Math.floor(n/10)]+(n%10>0?' y '+UN[n%10]:'');}return r.trim();}
+function toLetras(n){if(!n||n<=0)return '';const s=numLetras(Math.floor(n));return 'Pesos '+s.charAt(0).toUpperCase()+s.slice(1);}
+
+// ── FORM EXPOSITOR ──
+function onSenaInput(){
+  const sena=parseFloat(document.getElementById('sena').value)||0;
+  document.getElementById('letras').value=sena>0?toLetras(sena):'';
+  calcSaldo(); syncDocs();
+}
+
+function calcSaldo(){
+  const canon=parseFloat(document.getElementById('canon').value)||0;
+  const sena=parseFloat(document.getElementById('sena').value)||0;
+  const saldoEl=document.getElementById('saldo');
+  const hintEl=document.getElementById('saldo-hint');
+  document.getElementById('sum-canon').textContent=canon?fmt(canon):'—';
+  document.getElementById('sum-sena').textContent=sena?fmt(sena):'—';
+  if(!canon&&!sena){saldoEl.value='';saldoEl.className='calculated';document.getElementById('sum-saldo').textContent='—';document.getElementById('sum-card-saldo').className='res-card highlight';return;}
+  const saldo=canon-sena;
+  if(saldo<0){saldoEl.value='Seña supera el canon';saldoEl.className='error';hintEl.textContent='La seña no puede superar el canon';hintEl.className='hint warn';document.getElementById('sum-saldo').textContent='⚠';document.getElementById('sum-card-saldo').className='res-card warn';}
+  else{saldoEl.value=fmt(saldo);saldoEl.className='calculated';hintEl.textContent='Se calcula automáticamente';hintEl.className='hint';document.getElementById('sum-saldo').textContent=fmt(saldo);document.getElementById('sum-card-saldo').className='res-card highlight';}
+}
+
+function onFormaChange(){
+  const forma=document.getElementById('forma').value;
+  document.getElementById('field-destino').style.display=forma==='Transferencia'?'flex':'none';
+  if(forma!=='Transferencia') document.getElementById('destino').value='';
+  syncDocs();
+}
+
+function getData(){
+  const tipo=document.querySelector('#tipo-group input[type=radio]:checked');
+  const canon=parseFloat(document.getElementById('canon').value)||0;
+  const sena=parseFloat(document.getElementById('sena').value)||0;
+  const saldo=canon>=sena?canon-sena:null;
+  const forma=document.getElementById('forma').value||'';
+  const destino=forma==='Transferencia'?document.getElementById('destino').value||'':'';
+  return {fecha:document.getElementById('fecha').value,nombre:document.getElementById('nombre').value||'',cuit:document.getElementById('cuit').value||'',stand:document.getElementById('stand').value||'',telefono:document.getElementById('telefono').value||'',tipoStand:tipo?tipo.value:'',frente:document.getElementById('frente').value||'',fondo:document.getElementById('fondo').value||'',canon,sena,saldo,letras:document.getElementById('letras').value||'',forma,destino};
+}
+
+function validar(d){
+  if(!d.nombre)return 'Falta nombre / razón social';
+  if(!d.stand)return 'Falta nombre del stand';
+  if(!d.tipoStand)return 'Seleccioná el tipo de stand';
+  if(!d.canon)return 'Ingresá el canon total';
+  if(!d.sena)return 'Ingresá el monto de seña';
+  if(d.saldo<0)return 'La seña supera el canon';
+  if(!d.forma)return 'Seleccioná la forma de pago';
+  return null;
+}
+
+function syncDocs(){
+  // Actualiza solo zona de impresión (sin preview visible)
+  const d=getData();
+  const cut='<div class="cut-line">✂ &nbsp; Duplicado — cortar por aquí &nbsp; ✂</div>';
+  document.getElementById('print-contrato').innerHTML=buildContrato(d);
+  document.getElementById('print-anexo').innerHTML=buildAnexo(d);
+  document.getElementById('print-recibo').innerHTML=buildRecibo(d)+cut+buildRecibo(d);
+}
+syncDocs();
+
+// ── GUARDAR Y MODAL DOCS ──
+let datosGuardados=null;
+
+async function guardarYGenerarDocs(){
+  const d=getData();
+  const err=validar(d);
+  if(err){showToast(err,'error');return;}
+  const btn=document.getElementById('btn-guardar');
+  btn.disabled=true;btn.textContent='Guardando...';
+  try{
+    await fetch(WEBAPP_URL,{method:'POST',mode:'no-cors',headers:{'Content-Type':'application/json'},body:JSON.stringify({...d,tipo:'seña'})});
+    datosGuardados=d;
+    syncDocs();
+    document.getElementById('modal-docs-stand').textContent=d.stand+(d.nombre?' — '+d.nombre:'');
+    document.getElementById('modal-docs-overlay').classList.add('show');
+    showToast('✓ Guardado en Google Sheets');
+  }catch(e){showToast('Error al conectar con Google Sheets','error');}
+  finally{btn.disabled=false;btn.innerHTML='💾 Guardar y generar documentos';}
+}
+
+function cerrarModalDocs(){
+  document.getElementById('modal-docs-overlay').classList.remove('show');
+}
+
+function soloVerContrato(){
+  cerrarModalDocs();
+  ocultarTodosPrint();
+  document.getElementById('print-contrato').style.display='block';
+  document.getElementById('print-anexo').style.display='block';
+  setTimeout(()=>{window.print();setTimeout(restaurarPrint,500);},100);
+}
+
+function soloVerRecibo(){
+  cerrarModalDocs();
+  ocultarTodosPrint();
+  document.getElementById('print-recibo').style.display='flex';
+  setTimeout(()=>{window.print();setTimeout(restaurarPrint,500);},100);
+}
+
+function imprimirTodo(){
+  cerrarModalDocs();
+  ocultarTodosPrint();
+  document.getElementById('print-contrato').style.display='block';
+  document.getElementById('print-anexo').style.display='block';
+  document.getElementById('print-recibo').style.display='flex';
+  setTimeout(()=>{window.print();setTimeout(restaurarPrint,1000);},300);
+}
+
+function soloImprimirRecibo(){
+  const d=getData();
+  const err=validar(d);
+  if(err){showToast(err,'error');return;}
+  syncDocs();
+  ocultarTodosPrint();
+  document.getElementById('print-recibo').style.display='flex';
+  setTimeout(()=>{window.print();setTimeout(restaurarPrint,500);},100);
+}
+
+function ocultarTodosPrint(){
+  ['print-contrato','print-anexo','print-recibo','print-recibo-saldo'].forEach(id=>{
+    document.getElementById(id).style.display='none';
+  });
+}
+function restaurarPrint(){
+  ['print-contrato','print-anexo','print-recibo','print-recibo-saldo'].forEach(id=>{
+    document.getElementById(id).style.display='';
+  });
+}
+
+// ── MODAL REIMPRIMIR ──
+let registrosCache=[];
+async function abrirModal(){
+  document.getElementById('modal-overlay').classList.add('show');
+  document.getElementById('modal-buscar').value='';
+  document.getElementById('modal-lista').innerHTML='<div class="modal-loading">Cargando expositores...</div>';
+  try{
+    const resp=await fetch(WEBAPP_URL,{method:'GET',mode:'cors'});
+    const data=await resp.json();
+    registrosCache=data.registros||[];
+    renderLista(registrosCache);
+  }catch(e){document.getElementById('modal-lista').innerHTML='<div class="modal-empty">Error al cargar. Verificá la conexión.</div>';}
+}
+function cerrarModalBtn(){document.getElementById('modal-overlay').classList.remove('show');}
+function filtrarModal(){
+  const q=document.getElementById('modal-buscar').value.toLowerCase();
+  renderLista(registrosCache.filter(r=>(r.stand||'').toLowerCase().includes(q)||(r.nombre||'').toLowerCase().includes(q)));
+}
+function renderLista(registros){
+  const lista=document.getElementById('modal-lista');
+  if(!registros.length){lista.innerHTML='<div class="modal-empty">No se encontraron expositores.</div>';return;}
+  lista.innerHTML=registros.map(r=>'<div class="modal-item" onclick="cargarRegistro('+registrosCache.indexOf(r)+')"><span class="mi-fecha">'+(r.fecha||'')+'</span><div class="mi-stand">'+(r.stand||'—')+'</div><div class="mi-titular">'+(r.nombre||'')+' '+(r.cuit?'· '+r.cuit:'')+'</div></div>').join('');
+}
+function cargarRegistro(idx){
+  const r=registrosCache[idx];if(!r)return;
+  document.getElementById('nombre').value=r.nombre||'';
+  document.getElementById('cuit').value=r.cuit||'';
+  document.getElementById('stand').value=r.stand||'';
+  document.getElementById('telefono').value=r.telefono||'';
+  document.getElementById('frente').value=r.frente||'';
+  document.getElementById('fondo').value=r.fondo||'';
+  document.getElementById('canon').value=r.canon||'';
+  document.getElementById('sena').value=r.sena||'';
+  document.getElementById('letras').value=r.letras||'';
+  document.getElementById('forma').value=r.forma||'';
+  document.getElementById('destino').value=r.destino||'';
+  document.querySelectorAll('#tipo-group input[type=radio]').forEach(radio=>{radio.checked=radio.value===r.tipoStand;radio.closest('label').classList.toggle('selected',radio.value===r.tipoStand);});
+  document.getElementById('field-destino').style.display=r.forma==='Transferencia'?'flex':'none';
+  calcSaldo(); syncDocs(); cerrarModalBtn();
+  showToast('✓ Datos de '+(r.stand||r.nombre)+' cargados');
+}
+
+// ── BUILD RECIBO ──
+function buildRecibo(d){
+  const badges=TIPOS.map(t=>'<span class="r-badge '+(d.tipoStand===t?'sel':'')+'">'+(t)+'</span>').join('');
+  const saldoDisplay=d.saldo!==null?fmt(d.saldo):'<span style="color:#bbb;font-style:italic;">...</span>';
+  return '<div class="recibo">'+
+    '<div class="r-titulo">RECIBO DE SEÑA</div>'+
+    '<div class="r-sub">BirraFest Tucumán – 7ma. Edición</div>'+
+    '<div class="r-lugar">Parque Avellaneda &nbsp;|&nbsp; Sábado 30 y Domingo 31 de mayo de 2026</div>'+
+    '<div class="r-sec">Datos del expositor</div>'+
+    '<div class="r-row"><span class="r-lbl">Titular:</span><span class="r-val">'+v(d.nombre)+'</span></div>'+
+    '<div class="r-row"><span class="r-lbl">DNI / CUIT:</span><span class="r-val">'+v(d.cuit)+'</span></div>'+
+    '<div class="r-row"><span class="r-lbl">Nombre de fantasía:</span><span class="r-val">'+v(d.stand)+'</span></div>'+
+    '<div class="r-row" style="align-items:center;"><span class="r-lbl">Tipo de stand:</span><span>'+badges+'</span></div>'+
+    '<div class="r-sec">Canon y pago</div>'+
+    '<div class="r-canon">'+
+      '<div class="r-ci"><div class="cl">Canon total</div><div class="cv">'+(d.canon?fmt(d.canon):'—')+'</div></div>'+
+      '<div class="r-ci"><div class="cl">Seña abonada</div><div class="cv">'+(d.sena?fmt(d.sena):'—')+'</div></div>'+
+      '<div class="r-ci cg"><div class="cl">Saldo pendiente</div><div class="cv">'+saldoDisplay+'</div></div>'+
+    '</div>'+
+    '<div class="r-row"><span class="r-lbl">Seña en letras:</span><span class="r-val">'+v(d.letras)+'</span></div>'+
+    '<div class="r-row"><span class="r-lbl">Forma de pago:</span><span class="r-val">'+v(d.forma)+'</span></div>'+
+    (d.forma==='Transferencia'?'<div class="r-row"><span class="r-lbl">Destino transf.:</span><span class="r-val">'+v(d.destino)+'</span></div>':'')+
+    '<div class="r-saldo"><div class="r-row"><span class="r-lbl">Fecha límite saldo:</span><span class="r-val fx">25 de mayo de 2026</span></div></div>'+
+    '<div class="r-sec">Emisión</div>'+
+    '<div class="r-row"><span class="r-lbl">Fecha:</span><span class="r-val">'+d.fecha+'</span></div>'+
+    '<div class="r-row"><span class="r-lbl">Lugar:</span><span class="r-val">San Miguel de Tucumán</span></div>'+
+    '<div class="r-sig">'+
+      '<div class="r-sb"><div class="r-sl"></div><div class="r-slbl">Firma y aclaración del Expositor</div></div>'+
+      '<div class="r-sb"><div class="r-sl"></div><div class="r-slbl">P/ BirraFest VII – Organización</div></div>'+
+    '</div>'+
+    '<div class="r-gracias">¡Gracias por ser parte de BirraFest!</div>'+
+  '</div>';
+}
+
+// ── BUILD CONTRATO ──
+function buildContrato(d){
+  const esGastro=['Food Truck','Carpa gastronómica'].includes(d.tipoStand);
+  const esParrilla=d.tipoStand==='Parrilla';
+  const esCervecero=['Beer Truck','Carpa cerveza'].includes(d.tipoStand);
+  let sec6='<div class="c-sec">6. CONDICIONES ESPECÍFICAS POR TIPO DE EXPOSITOR</div>';
+  if(esGastro){
+    sec6+='<p class="c-subsec">6.1. Expositores Gastronómicos (Food Trucks y Carpas Gastronómicas)</p>';
+    sec6+='<p class="c-body">Además de las condiciones generales, los expositores gastronómicos deberán cumplir con lo siguiente:</p>';
+    sec6+='<ol class="c-ol">';
+    sec6+='<li><strong>Proveedor oficial de papas fritas — Exclusividad McCain:</strong> BirraFest VII ha designado a Vía Gastronómica (Grupo Share Out) como proveedor estratégico exclusivo de papas pre-fritas congeladas marca McCain para el evento. Todo expositor gastronómico que ofrezca papas fritas o productos elaborados a base de papa congelada deberá adquirirlos exclusivamente a través de dicho proveedor, quedando expresamente prohibida la utilización de papas pre-fritas congeladas de cualquier otra marca o proveedor durante el transcurso del evento.</li>';
+    sec6+='<li><strong>Preventa especializada:</strong> El proveedor oficial realizará contacto previo de preventa personalizada con los expositores confirmados, semanas antes del evento, para coordinar pedidos, precios especiales y logística de entrega. La organización facilitará los datos de contacto del expositor a tal efecto.</li>';
+    sec6+='<li><strong>Logística garantizada:</strong> Vía Gastronómica pondrá a disposición su flota propia y capacidad de almacenamiento para asegurar stock constante de productos congelados y aderezos, evitando quiebres de stock en horas pico.</li>';
+    sec6+='<li><strong>Incumplimiento:</strong> El uso de papas pre-fritas congeladas de otra marca o proveedor faculta a la organización a retirar el producto del stand durante el evento, sin derecho a compensación ni reintegro.</li>';
+    sec6+='</ol>';
+  }
+  if(esCervecero){
+    const num=esGastro?'6.2':'6.1';
+    sec6+='<p class="c-subsec">'+num+'. Expositores Cerveceros (Beer Trucks y Carpas de Cerveza)</p>';
+    sec6+='<p class="c-body">Además de las condiciones generales, los expositores cerveceros deberán cumplir con:</p>';
+    sec6+='<ol class="c-ol">';
+    sec6+='<li>Ofrecer únicamente las marcas y variedades de cerveza declaradas en el Anexo I y aprobadas por la organización.</li>';
+    sec6+='<li>Está prohibida la comercialización de bebidas alcohólicas distintas a la cerveza sin autorización expresa de la organización.</li>';
+    sec6+='</ol>';
+  }
+  if(esParrilla){sec6+='<p class="c-subsec">6.1. Parrillas</p><p class="c-body">Las parrillas deberán cumplir exclusivamente las condiciones generales y el límite de cuatro (4) productos por el Anexo I. Su espacio asignado es de 8 metros lineales.</p>';}
+  if(!esGastro&&!esCervecero&&!esParrilla){sec6+='<p class="c-body" style="font-style:italic;">Las condiciones específicas aplican según el tipo de stand declarado.</p>';}
+
+  return '<div class="contrato">'+
+    '<div class="c-titulo">Bases y Condiciones de Participación</div>'+
+    '<div class="c-sub">BIRRA FEST TUCUMÁN – 7ma. EDICIÓN</div>'+
+    '<div class="c-lugar">Parque Avellaneda, San Miguel de Tucumán</div>'+
+    '<div class="c-ficha"><div class="c-ficha-hdr">Datos del evento</div>'+
+      '<div class="c-ficha-row"><span class="c-ficha-lbl">Armado / Montaje</span><span class="c-ficha-val">Viernes 29 de mayo de 2026 – Según cronograma de organización</span></div>'+
+      '<div class="c-ficha-row"><span class="c-ficha-lbl">Día 1 – Sábado</span><span class="c-ficha-val">30 de mayo de 2026 | Apertura al público: 18:00 hs.</span></div>'+
+      '<div class="c-ficha-row"><span class="c-ficha-lbl">Día 2 – Domingo</span><span class="c-ficha-val">31 de mayo de 2026 | Apertura al público: 17:00 hs.</span></div>'+
+      '<div class="c-ficha-row"><span class="c-ficha-lbl">Desmontaje</span><span class="c-ficha-val">Lunes 1 de junio de 2026 a partir de las 00:00 hs.</span></div>'+
+      '<div class="c-ficha-row"><span class="c-ficha-lbl">Lugar</span><span class="c-ficha-val">Parque Avellaneda, San Miguel de Tucumán</span></div>'+
+    '</div>'+
+    '<div class="c-ficha"><div class="c-ficha-hdr">Datos del expositor</div>'+
+      '<div class="c-ficha-row"><span class="c-ficha-lbl">Titular</span><span class="c-ficha-val">'+v(d.nombre,'________________________________')+'</span></div>'+
+      '<div class="c-ficha-row"><span class="c-ficha-lbl">DNI / CUIT</span><span class="c-ficha-val">'+v(d.cuit,'________________________________')+'</span></div>'+
+      '<div class="c-ficha-row"><span class="c-ficha-lbl">Nombre de fantasía</span><span class="c-ficha-val">'+v(d.stand,'________________________________')+'</span></div>'+
+      '<div class="c-ficha-row"><span class="c-ficha-lbl">Tipo de stand</span><span class="c-ficha-val">'+v(d.tipoStand,'☐ Food Truck  ☐ Beer Truck  ☐ Carpa gastronómica  ☐ Carpa cerveza  ☐ Parrilla  ☐ Otro  ☐ Sponsor')+'</span></div>'+
+      '<div class="c-ficha-row"><span class="c-ficha-lbl">Medidas del stand</span><span class="c-ficha-val">'+(d.frente||'___')+' m (frente) × '+(d.fondo||'___')+' m (fondo)</span></div>'+
+      '<div class="c-ficha-row"><span class="c-ficha-lbl">Teléfono de contacto</span><span class="c-ficha-val">'+v(d.telefono,'________________________________')+'</span></div>'+
+      '<div class="c-ficha-row"><span class="c-ficha-lbl">Fecha de emisión</span><span class="c-ficha-val">'+d.fecha+'</span></div>'+
+    '</div>'+
+    '<div class="c-ficha"><div class="c-ficha-hdr">Canon de participación</div>'+
+      '<div class="c-ficha-row"><span class="c-ficha-lbl">Canon total</span><span class="c-ficha-val red">'+(d.canon?fmt(d.canon):'____________________')+'</span></div>'+
+      '<div class="c-ficha-row"><span class="c-ficha-lbl">Seña abonada</span><span class="c-ficha-val">'+(d.sena?fmt(d.sena):'____________________')+'</span></div>'+
+      '<div class="c-ficha-row"><span class="c-ficha-lbl">Saldo pendiente</span><span class="c-ficha-val">'+(d.saldo!==null?fmt(d.saldo):'____________________')+'</span></div>'+
+      '<div class="c-ficha-row"><span class="c-ficha-lbl">Fecha límite saldo</span><span class="c-ficha-val red">25 de mayo de 2026</span></div>'+
+      '<div class="c-ficha-row"><span class="c-ficha-lbl">Forma de pago</span><span class="c-ficha-val">'+v(d.forma,'____________________')+'</span></div>'+
+      (d.forma==='Transferencia'?'<div class="c-ficha-row"><span class="c-ficha-lbl">Destino transferencia</span><span class="c-ficha-val">'+v(d.destino,'____________________')+'</span></div>':'')+
+    '</div>'+
+    '<div class="c-sec">1. CANON DE PARTICIPACIÓN</div>'+
+    '<p class="c-body">La participación en el evento implica la presencia obligatoria durante los dos (2) días del festival (sábado 30 y domingo 31 de mayo). No se admite participación parcial. El canon cubre ambas jornadas.</p>'+
+    '<table class="c-table"><thead><tr><th>Tipo de stand</th><th>Metros asignados</th><th>Canon total (2 días)</th></tr></thead><tbody>'+
+      '<tr><td>Food truck gastronómico</td><td>5 metros</td><td>$850.000</td></tr>'+
+      '<tr><td>Beer truck / Cervecería</td><td>5 metros</td><td>$850.000</td></tr>'+
+      '<tr><td>Carpa gastronómica</td><td>3 metros</td><td>$850.000</td></tr>'+
+      '<tr><td>Carpa de cerveza</td><td>5 metros</td><td>$850.000</td></tr>'+
+      '<tr><td>Parrilla</td><td>8 metros</td><td>$1.100.000</td></tr>'+
+    '</tbody></table>'+
+    '<p class="c-body">Todo pago realizado en concepto de seña o pago a cuenta es no reintegrable ante cancelación por parte del expositor.</p>'+
+    '<div class="c-sec">2. CONDICIONES GENERALES DEL PUNTO DE VENTA</div>'+
+    '<p class="c-body">Cada expositor deberá cumplir con la totalidad de los siguientes requisitos:</p>'+
+    '<ol class="c-ol">'+
+      '<li>Contar con matafuegos de 5 kg. En el caso de parrillas, se podrán utilizar baldes con arena.</li>'+
+      '<li>Disponer de alargador de 15 metros de longitud (cable tipo taller de 3 x 2,5 mm con ficha) para conexión eléctrica.</li>'+
+      '<li>Contar con su respectivo tablero eléctrico, disyuntor y 2 térmicas.</li>'+
+      '<li>Exhibir cartelería visible con el nombre del stand, listado de productos y lista de precios actualizada.</li>'+
+      '<li>Disponer de 2 cestos de basura: uno para el interior del stand y otro en el exterior.</li>'+
+      '<li>Contar con luz de emergencia.</li>'+
+      '<li>Entregar el espacio en las mismas condiciones en que fue recibido. La organización no se responsabiliza por la integridad de los elementos de trabajo del expositor.</li>'+
+      '<li>El armado se realizará el día 29 de mayo conforme al cronograma y ubicaciones asignadas por la organización.</li>'+
+      '<li>Está prohibido el uso de elementos con resistencia eléctrica: pava eléctrica, olla eléctrica, freidora eléctrica y similares.</li>'+
+      '<li>Entregar DOS (2) vouchers por día (sábado y domingo), destinados a sorteos, personal de limpieza y autoridades invitadas.</li>'+
+      '<li>Todo el personal deberá contar con carnet de sanidad y bromatología (curso de manipulación de alimentos).</li>'+
+    '</ol>'+
+    '<div class="c-sec">3. EQUIPAMIENTO MÍNIMO REQUERIDO DEL MÓDULO</div>'+
+    '<p class="c-body">Food truck o gazebo autoplegable deberá contar con:</p>'+
+    '<ul class="c-ul">'+
+      '<li>Guantes negros, cofia y delantal o chaqueta de cocina.</li>'+
+      '<li>Utensilios desinfectados y tachos diferenciados para agua limpia y agua gris.</li>'+
+      '<li>Equipamiento de refrigeración para alimentos y/o bebidas perecederas.</li>'+
+      '<li>Equipo de cocción o calentamiento a brasas o gas envasado.</li>'+
+      '<li>Mínimo dos receptáculos para separación y almacenamiento de residuos.</li>'+
+      '<li>Mantelería de color negro (en caso de utilizarla).</li>'+
+      '<li>Pizarra con lista de precios actualizada.</li>'+
+    '</ul>'+
+    '<p class="c-body" style="font-style:italic;">Todos los detalles de ambientación quedan sujetos a supervisión y aprobación de la organización.</p>'+
+    '<div class="c-sec">4. SEGURO DE ACCIDENTES PERSONALES</div>'+
+    '<p class="c-body">Cada expositor deberá contratar y presentar un seguro de accidentes personales que cubra a todo el personal que asista al evento, con las siguientes coberturas mínimas:</p>'+
+    '<ul class="c-ul">'+
+      '<li>Muerte e invalidez: $2.500.000 (pesos dos millones quinientos mil) suma asegurada mínima.</li>'+
+      '<li>Asistencia médico-farmacéutica: $250.000 (pesos doscientos cincuenta mil) suma asegurada mínima.</li>'+
+    '</ul>'+
+    '<p class="c-body">Se deberá presentar certificado de cobertura con cláusula de no repetición a favor de:</p>'+
+    '<div class="c-ficha" style="margin-top:6px;"><div class="c-ficha-hdr">Beneficiarios de la cláusula de no repetición</div>'+
+      '<div class="c-ficha-row"><span class="c-ficha-lbl">Municipalidad de S.M. de Tucumán</span><span class="c-ficha-val">CUIT: 30-65534294-6</span></div>'+
+      '<div class="c-ficha-row"><span class="c-ficha-lbl">Carlos de la Vega</span><span class="c-ficha-val">CUIT: 20-17866617-8</span></div>'+
+      '<div class="c-ficha-row"><span class="c-ficha-lbl">Carolina Campero</span><span class="c-ficha-val">CUIL: 27-26834503-0</span></div>'+
+      '<div class="c-ficha-row"><span class="c-ficha-lbl">Daniel Aro</span><span class="c-ficha-val">CUIL: 20-18890294-5</span></div>'+
+    '</div>'+
+    '<div class="c-sec">5. PRODUCTOS AUTORIZADOS</div>'+
+    '<p class="c-body">Los productos a comercializar deberán ser consignados en el Anexo I y acordados previamente con la organización. Se aplican los siguientes límites:</p>'+
+    '<ul class="c-ul">'+
+      '<li><strong>Puestos con parrilla:</strong> hasta cuatro (4) productos autorizados.</li>'+
+      '<li><strong>Resto de puestos:</strong> hasta tres (3) productos autorizados.</li>'+
+    '</ul>'+
+    '<p class="c-body">Queda expresamente prohibido ofrecer productos distintos a los autorizados. El incumplimiento de esta cláusula será motivo de expulsión inmediata del evento, sin derecho a reintegro.</p>'+
+    sec6+
+    '<div class="c-sec">7. PROHIBICIONES EXPRESAS</div>'+
+    '<ul class="c-ul">'+
+      '<li>Modificar o agregar productos no autorizados en el Anexo I.</li>'+
+      '<li>Comercializar alimentos en mal estado de conservación.</li>'+
+      '<li>Arrojar desperdicios o efluentes a la vía pública o áreas del parque.</li>'+
+      '<li>Ocupar espacio fuera del lugar asignado por la organización.</li>'+
+      '<li>Incumplir los horarios de armado y desmontaje establecidos.</li>'+
+      '<li>Utilizar elementos con resistencia eléctrica (freidoras, ollas, pavas eléctricas).</li>'+
+    '</ul>'+
+    '<p class="c-body" style="font-style:italic;">La organización no garantiza el éxito de ventas, ni la realización del evento en caso de lluvia u otras causas de fuerza mayor.</p>'+
+    '<div class="c-sec">8. DECLARACIÓN JURADA</div>'+
+    '<p class="c-body">El/la firmante declara responsable del punto de venta denominado a continuación, y certifica que todos los datos consignados en el presente contrato son verídicos, con carácter de declaración jurada. Asimismo, declara haber leído, comprendido y aceptado en su totalidad las presentes Bases y Condiciones.</p>'+
+    '<div class="c-firma-row" style="margin-top:24px;">'+
+      '<div class="c-firma-blk"><div class="c-firma-line"></div><div class="c-firma-lbl">Firma y Aclaración del Expositor</div><div class="c-firma-lbl" style="margin-top:3px;color:#666;">DNI: ____________________</div></div>'+
+      '<div class="c-firma-blk"><div class="c-firma-line"></div><div class="c-firma-lbl">P/ BirraFest VII – Organización</div></div>'+
+    '</div>'+
+    '<p style="text-align:center;font-size:11px;color:#C0392B;font-style:italic;margin-top:16px;">¡Bienvenidos! Gracias por ser parte de BirraFest – 7ma. Edición.</p>'+
+  '</div>';
+}
+
+// ── BUILD ANEXO ──
+function buildAnexo(d){
+  const esParrilla=d.tipoStand==='Parrilla';
+  const max=esParrilla?4:3;
+  const items=Array.from({length:max},(_,i)=>'<div class="a-item"><span class="a-num">'+(i+1)+')</span><div class="a-line"></div></div>').join('');
+  return '<div class="anexo">'+
+    '<div class="a-titulo">Anexo I — Productos Autorizados</div>'+
+    '<div class="a-sub">BirraFest Tucumán – 7ma. Edición · Productos autorizados a comercializar</div>'+
+    '<div class="a-dato"><span class="a-lbl">Nombre de fantasía:</span><span class="a-val">'+v(d.stand)+'</span></div>'+
+    '<div class="a-dato"><span class="a-lbl">Tipo de stand:</span><span class="a-val">'+v(d.tipoStand)+'</span></div>'+
+    '<div class="a-dato" style="margin-bottom:20px;"><span class="a-lbl">Titular / Responsable:</span><span class="a-val">'+v(d.nombre)+'</span></div>'+
+    items+
+    '<div class="a-nota">Máximo '+max+' producto'+(max>1?'s':'')+' autorizado'+(max>1?'s':'')+' para este tipo de stand.<br>Queda prohibido ofrecer productos distintos a los aquí declarados.</div>'+
+    '<div class="c-firma-row">'+
+      '<div class="c-firma-blk"><div class="c-firma-line"></div><div class="c-firma-lbl">Firma del Expositor</div></div>'+
+      '<div class="c-firma-blk"><div class="c-firma-line"></div><div class="c-firma-lbl">P/ BirraFest VII – Organización</div></div>'+
+    '</div>'+
+  '</div>';
+}
+
+// ── PANEL SALDOS ──
+let saldosIniciado=false;
+let regSenas=[];
+let regSaldos=[];
+let standSeleccionado=null;
+
+async function iniciarPanelSaldos(){
+  if(saldosIniciado)return;
+  saldosIniciado=true;
+  await cargarDatosSaldos();
+}
+
+async function cargarDatosSaldos(){
+  document.getElementById('sl-hint-carga').textContent='Cargando expositores...';
+  try{
+    const resp=await fetch(WEBAPP_URL+'?action=saldos',{method:'GET',mode:'cors'});
+    const data=await resp.json();
+    regSenas=data.senas||[];
+    regSaldos=data.saldos||[];
+    poblarSelectStand();
+    renderTablaControl();
+    document.getElementById('sl-hint-carga').textContent=regSenas.length+' expositores cargados';
+  }catch(e){
+    document.getElementById('sl-hint-carga').textContent='Error al cargar. Verificá la conexión.';
+  }
+}
+
+function poblarSelectStand(){
+  const sel=document.getElementById('sl-stand');
+  const val=sel.value;
+  sel.innerHTML='<option value="">Seleccionar stand...</option>';
+  regSenas.forEach(r=>{
+    const o=document.createElement('option');
+    o.value=r.stand;
+    o.textContent=r.stand+(r.nombre?' — '+r.nombre:'');
+    sel.appendChild(o);
+  });
+  if(val)sel.value=val;
+}
+
+function calcTotalesStand(standNombre){
+  const reg=regSenas.find(r=>r.stand===standNombre)||{};
+  const canon=parseFloat(reg.canon)||0;
+  const sena=parseFloat(reg.sena)||0;
+  const saldosPagados=regSaldos.filter(s=>s.stand===standNombre).reduce((a,s)=>a+(parseFloat(s.monto)||0),0);
+  const total=sena+saldosPagados;
+  return {canon,sena,saldosPagados,total,pendiente:Math.max(0,canon-total)};
+}
+
+function onSelectStand(){
+  const nombre=document.getElementById('sl-stand').value;
+  const box=document.getElementById('stand-info');
+  if(!nombre){box.classList.remove('visible');return;}
+  const {canon,total,pendiente}=calcTotalesStand(nombre);
+  document.getElementById('si-canon').textContent=fmt(canon);
+  document.getElementById('si-cobrado').textContent=fmt(total);
+  const pEl=document.getElementById('si-pendiente');
+  pEl.textContent=fmt(pendiente);
+  pEl.className='si-val '+(pendiente<=0?'verde':'rojo');
+  box.classList.add('visible');
+  if(pendiente>0){document.getElementById('sl-monto').value=pendiente;document.getElementById('sl-letras').value=toLetras(pendiente);}
+  else{document.getElementById('sl-monto').value='';document.getElementById('sl-letras').value='';}
+}
+
+function onSlMontoInput(){
+  const m=parseFloat(document.getElementById('sl-monto').value)||0;
+  document.getElementById('sl-letras').value=m>0?toLetras(m):'';
+}
+function onSlFormaChange(){
+  const f=document.getElementById('sl-forma').value;
+  document.getElementById('sl-field-destino').style.display=f==='Transferencia'?'flex':'none';
+  if(f!=='Transferencia')document.getElementById('sl-destino').value='';
+}
+
+function getDataSaldo(){
+  const nombre=document.getElementById('sl-stand').value;
+  const reg=regSenas.find(r=>r.stand===nombre)||{};
+  return {fecha:fechaHoy(),stand:nombre,nombre:reg.nombre||'',cuit:reg.cuit||'',tipoStand:reg.tipoStand||'',canon:parseFloat(reg.canon)||0,monto:parseFloat(document.getElementById('sl-monto').value)||0,letras:document.getElementById('sl-letras').value||'',forma:document.getElementById('sl-forma').value||'',destino:document.getElementById('sl-destino').value||'',obs:document.getElementById('sl-obs').value||''};
+}
+function validarSaldo(d){
+  if(!d.stand)return 'Seleccioná el stand';
+  if(!d.monto||d.monto<=0)return 'Ingresá el monto del pago';
+  if(!d.forma)return 'Seleccioná la forma de pago';
+  return null;
+}
+
+async function registrarPagoSaldo(){
+  const d=getDataSaldo();
+  const err=validarSaldo(d);
+  if(err){showToast(err,'error');return;}
+  const btn=document.getElementById('btn-sl-guardar');
+  btn.disabled=true;btn.textContent='Guardando...';
+  try{
+    await fetch(WEBAPP_URL,{method:'POST',mode:'no-cors',headers:{'Content-Type':'application/json'},body:JSON.stringify({...d,tipo:'saldo'})});
+    regSaldos.push({stand:d.stand,monto:d.monto,fecha:d.fecha,forma:d.forma,obs:d.obs});
+    renderTablaControl();
+    onSelectStand();
+    if(standSeleccionado===d.stand)renderHistorial(d.stand);
+    prepararReciboSaldo(d);
+    ocultarTodosPrint();
+    document.getElementById('print-recibo-saldo').style.display='flex';
+    setTimeout(()=>{window.print();setTimeout(restaurarPrint,1000);},300);
+    showToast('✓ Pago registrado en Google Sheets');
+  }catch(e){showToast('Error al conectar con Google Sheets','error');}
+  finally{btn.disabled=false;btn.innerHTML='💾 Registrar y emitir recibo';}
+}
+
+function soloImprimirReciboSaldo(){
+  const d=getDataSaldo();
+  const err=validarSaldo(d);
+  if(err){showToast(err,'error');return;}
+  prepararReciboSaldo(d);
+  ocultarTodosPrint();
+  document.getElementById('print-recibo-saldo').style.display='flex';
+  setTimeout(()=>{window.print();setTimeout(restaurarPrint,500);},100);
+}
+
+function prepararReciboSaldo(d){
+  const {total,pendiente}=calcTotalesStand(d.stand);
+  const pendPost=Math.max(0,d.canon-(total));
+  const html=buildReciboSaldo(d,pendPost);
+  const cut='<div class="cut-line">✂ &nbsp; Duplicado — cortar por aquí &nbsp; ✂</div>';
+  document.getElementById('print-recibo-saldo').innerHTML=html+cut+html;
+}
+
+function buildReciboSaldo(d,pendientePost){
+  return '<div class="recibo">'+
+    '<div class="r-titulo">RECIBO DE PAGO</div>'+
+    '<div class="r-sub">BirraFest Tucumán – 7ma. Edición</div>'+
+    '<div class="r-lugar">Parque Avellaneda &nbsp;|&nbsp; Sábado 30 y Domingo 31 de mayo de 2026</div>'+
+    '<div class="r-sec">Datos del expositor</div>'+
+    '<div class="r-row"><span class="r-lbl">Titular:</span><span class="r-val">'+v(d.nombre)+'</span></div>'+
+    '<div class="r-row"><span class="r-lbl">DNI / CUIT:</span><span class="r-val">'+v(d.cuit)+'</span></div>'+
+    '<div class="r-row"><span class="r-lbl">Nombre de fantasía:</span><span class="r-val">'+v(d.stand)+'</span></div>'+
+    '<div class="r-row"><span class="r-lbl">Tipo de stand:</span><span class="r-val">'+v(d.tipoStand)+'</span></div>'+
+    '<div class="r-sec">Detalle del pago</div>'+
+    '<div class="r-canon">'+
+      '<div class="r-ci"><div class="cl">Canon total</div><div class="cv">'+(d.canon?fmt(d.canon):'—')+'</div></div>'+
+      '<div class="r-ci"><div class="cl">Monto abonado</div><div class="cv" style="color:#C0392B;">'+(d.monto?fmt(d.monto):'—')+'</div></div>'+
+      '<div class="r-ci cg"><div class="cl">Saldo restante</div><div class="cv">'+(d.canon?fmt(pendientePost):'—')+'</div></div>'+
+    '</div>'+
+    '<div class="r-row"><span class="r-lbl">Monto en letras:</span><span class="r-val">'+v(d.letras)+'</span></div>'+
+    '<div class="r-row"><span class="r-lbl">Forma de pago:</span><span class="r-val">'+v(d.forma)+'</span></div>'+
+    (d.forma==='Transferencia'?'<div class="r-row"><span class="r-lbl">Destino transf.:</span><span class="r-val">'+v(d.destino)+'</span></div>':'')+
+    (d.obs?'<div class="r-row"><span class="r-lbl">Observaciones:</span><span class="r-val">'+d.obs+'</span></div>':'')+
+    '<div class="r-sec">Emisión</div>'+
+    '<div class="r-row"><span class="r-lbl">Fecha:</span><span class="r-val">'+d.fecha+'</span></div>'+
+    '<div class="r-row"><span class="r-lbl">Lugar:</span><span class="r-val">San Miguel de Tucumán</span></div>'+
+    '<div class="r-sig">'+
+      '<div class="r-sb"><div class="r-sl"></div><div class="r-slbl">Firma del Expositor</div></div>'+
+      '<div class="r-sb"><div class="r-sl"></div><div class="r-slbl">P/ BirraFest VII – Organización</div></div>'+
+    '</div>'+
+    '<div class="r-gracias">¡Gracias por ser parte de BirraFest!</div>'+
+  '</div>';
+}
+
+// ── TABLA CONTROL ──
+let filasTodas=[];
+
+function renderTablaControl(){
+  const tbody=document.getElementById('ctrl-tbody');
+  const table=document.getElementById('ctrl-table');
+  const loading=document.getElementById('ctrl-loading');
+  if(!regSenas.length){loading.textContent='No hay expositores registrados.';loading.style.display='block';table.style.display='none';return;}
+
+  let totalEsperado=0,totalCobrado=0;
+  filasTodas=regSenas.map(reg=>{
+    const {canon,total,pendiente,sena,saldosPagados}=calcTotalesStand(reg.stand);
+    totalEsperado+=canon; totalCobrado+=total;
+    return {stand:reg.stand,nombre:reg.nombre,canon,sena,saldosPagados,total,pendiente};
+  });
+
+  document.getElementById('rc-esperado').textContent=fmt(totalEsperado);
+  document.getElementById('rc-cobrado').textContent=fmt(totalCobrado);
+  document.getElementById('rc-pendiente').textContent=fmt(Math.max(0,totalEsperado-totalCobrado));
+
+  const q=document.getElementById('ctrl-buscar').value.toLowerCase();
+  renderFilas(q);
+  loading.style.display='none';
+  table.style.display='table';
+}
+
+function filtrarTabla(){
+  const q=document.getElementById('ctrl-buscar').value.toLowerCase();
+  renderFilas(q);
+}
+
+function renderFilas(q){
+  const tbody=document.getElementById('ctrl-tbody');
+  const pendientes=filasTodas.filter(f=>f.pendiente>0&&(f.stand.toLowerCase().includes(q)||f.nombre.toLowerCase().includes(q)));
+  if(!pendientes.length){tbody.innerHTML='<tr><td colspan="5" style="text-align:center;color:#999;padding:1.5rem;font-size:12px;">Sin saldos pendientes'+(q?' para "'+q+'"':'')+'</td></tr>';return;}
+  tbody.innerHTML=pendientes.map(f=>{
+    const sel=standSeleccionado===f.stand?'selected':'';
+    const estadoClass=f.saldosPagados>0?'est-amarillo':'est-rojo';
+    const estadoLabel=f.saldosPagados>0?'Parcial':'Solo seña';
+    return '<tr class="'+sel+'" onclick="seleccionarStand(\''+f.stand.replace(/'/g,"\\'")+'\')" style="cursor:pointer;">'+
+      '<td><strong>'+f.stand+'</strong><br><span style="font-size:10px;color:#888;">'+f.nombre+'</span></td>'+
+      '<td>'+fmt(f.canon)+'</td>'+
+      '<td>'+fmt(f.total)+'</td>'+
+      '<td style="color:var(--red);font-weight:700;">'+fmt(f.pendiente)+'</td>'+
+      '<td><span class="estado '+estadoClass+'">'+estadoLabel+'</span></td>'+
+    '</tr>';
+  }).join('');
+}
+
+function seleccionarStand(nombre){
+  standSeleccionado=nombre;
+  // Highlight fila
+  document.querySelectorAll('#ctrl-tbody tr').forEach(tr=>tr.classList.remove('selected'));
+  event.currentTarget.classList.add('selected');
+  // Pre-seleccionar en formulario
+  document.getElementById('sl-stand').value=nombre;
+  onSelectStand();
+  renderHistorial(nombre);
+}
+
+function renderHistorial(nombre){
+  const panel=document.getElementById('historial-panel');
+  const reg=regSenas.find(r=>r.stand===nombre)||{};
+  const pagos=regSaldos.filter(s=>s.stand===nombre);
+  const canon=parseFloat(reg.canon)||0;
+  const sena=parseFloat(reg.sena)||0;
+  const totalSaldos=pagos.reduce((a,s)=>a+(parseFloat(s.monto)||0),0);
+  const total=sena+totalSaldos;
+  const pendiente=Math.max(0,canon-total);
+
+  let html='<div class="hist-hdr">Historial de pagos</div>';
+  html+='<div class="hist-stand-name">'+nombre+'</div>';
+
+  if(reg.fecha||sena){
+    html+='<div class="hist-item">'+
+      '<div class="hist-fecha">'+(reg.fecha||'—')+'</div>'+
+      '<div class="hist-tipo hist-sena">Seña</div>'+
+      '<div class="hist-forma">'+(reg.forma||'')+'</div>'+
+      '<div class="hist-monto">'+fmt(sena)+'</div>'+
+    '</div>';
+  }
+
+  if(pagos.length){
+    pagos.forEach(p=>{
+      html+='<div class="hist-item">'+
+        '<div class="hist-fecha">'+(p.fecha||'—')+'</div>'+
+        '<div class="hist-tipo hist-saldo-tipo">Saldo</div>'+
+        '<div class="hist-forma">'+(p.forma||'')+(p.obs?' · '+p.obs:'')+'</div>'+
+        '<div class="hist-monto">'+fmt(parseFloat(p.monto)||0)+'</div>'+
+      '</div>';
+    });
+  } else {
+    html+='<div class="hist-empty">Sin pagos de saldo aún</div>';
+  }
+
+  html+='<div class="hist-footer">'+
+    '<div class="hist-footer-row"><span class="hist-footer-lbl">Total cobrado</span><span class="hist-footer-val" style="color:var(--green);">'+fmt(total)+'</span></div>'+
+    '<div class="hist-footer-row"><span class="hist-footer-lbl">Pendiente</span><span class="hist-footer-val" style="color:var(--red);">'+fmt(pendiente)+'</span></div>'+
+  '</div>';
+
+  panel.innerHTML=html;
+}
+</script>
+</body>
+</html>
