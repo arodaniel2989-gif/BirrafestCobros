@@ -1,0 +1,994 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BirraFest VII — Egresos</title>
+<style>
+  :root {
+    --red: #C0392B;
+    --green: #1a7a3a;
+    --blue: #1A5276;
+    --dark: #2C3E50;
+    --gray: #f4f4f4;
+    --gray-border: #ddd;
+    --text: #2C3E50;
+    --text-muted: #666;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; background: #f0f2f5; color: var(--text); font-size: 14px; }
+
+  /* ── HEADER ── */
+  .app-header {
+    background: var(--dark);
+    color: white;
+    padding: 12px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .app-header h1 { font-size: 17px; font-weight: 600; }
+  .app-header span { font-size: 12px; opacity: 0.7; }
+  .header-btns { display: flex; gap: 8px; }
+  .header-btns button {
+    background: rgba(255,255,255,0.15);
+    color: white;
+    border: 1px solid rgba(255,255,255,0.3);
+    padding: 6px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 12px;
+  }
+  .header-btns button:hover { background: rgba(255,255,255,0.25); }
+
+  /* ── MÉTRICAS ── */
+  .metrics {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    padding: 16px 20px 0;
+  }
+  .metric-card {
+    background: white;
+    border-radius: 10px;
+    padding: 14px 16px;
+    border: 1px solid var(--gray-border);
+  }
+  .metric-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+  .metric-value { font-size: 22px; font-weight: 600; color: var(--dark); }
+  .metric-value.red { color: var(--red); }
+  .metric-value.green { color: var(--green); }
+  .metric-value.orange { color: #e67e22; }
+
+  /* ── TABS ── */
+  .tabs-nav {
+    display: flex;
+    gap: 0;
+    padding: 16px 20px 0;
+    border-bottom: 2px solid var(--gray-border);
+    margin-top: 16px;
+  }
+  .tab-btn {
+    padding: 10px 20px;
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    cursor: pointer;
+    font-size: 13px;
+    color: var(--text-muted);
+    margin-bottom: -2px;
+    font-weight: 500;
+  }
+  .tab-btn.active { color: var(--red); border-bottom-color: var(--red); }
+  .tab-btn:hover:not(.active) { color: var(--dark); }
+
+  /* ── CONTENIDO TABS ── */
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+
+  /* ── LAYOUT PROVEEDORES ── */
+  .prov-layout {
+    display: grid;
+    grid-template-columns: 320px 1fr;
+    gap: 0;
+    height: calc(100vh - 220px);
+  }
+
+  /* ── SIDEBAR PROVEEDORES ── */
+  .prov-sidebar {
+    border-right: 1px solid var(--gray-border);
+    display: flex;
+    flex-direction: column;
+    background: white;
+  }
+  .sidebar-header {
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--gray-border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .sidebar-header h3 { font-size: 13px; font-weight: 600; color: var(--dark); }
+  .btn-add-prov {
+    background: var(--red);
+    color: white;
+    border: none;
+    padding: 5px 10px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 12px;
+  }
+  .search-box {
+    padding: 8px 14px;
+    border-bottom: 1px solid var(--gray-border);
+  }
+  .search-box input {
+    width: 100%;
+    padding: 7px 10px;
+    border: 1px solid var(--gray-border);
+    border-radius: 6px;
+    font-size: 12px;
+    outline: none;
+  }
+  .search-box input:focus { border-color: var(--red); }
+  .prov-list { overflow-y: auto; flex: 1; }
+  .cat-label {
+    padding: 6px 14px 4px;
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: var(--text-muted);
+    background: #f8f8f8;
+    border-bottom: 1px solid #eee;
+  }
+  .prov-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 9px 14px;
+    border-bottom: 1px solid #f0f0f0;
+    cursor: pointer;
+  }
+  .prov-row:hover { background: #fafafa; }
+  .prov-row.selected { background: #fff5f5; border-left: 3px solid var(--red); }
+  .prov-name { font-size: 13px; font-weight: 500; color: var(--dark); }
+  .prov-servicio { font-size: 11px; color: var(--text-muted); margin-top: 1px; }
+  .prov-right { text-align: right; }
+  .prov-acordado { font-size: 12px; font-weight: 600; color: var(--dark); }
+  .prov-pendiente { font-size: 11px; margin-top: 1px; }
+  .prov-pendiente.red { color: var(--red); }
+  .prov-pendiente.green { color: var(--green); }
+  .prov-pendiente.orange { color: #e67e22; }
+
+  /* ── PANEL DETALLE ── */
+  .prov-detail {
+    padding: 20px;
+    overflow-y: auto;
+    background: #f8f9fa;
+  }
+  .detail-empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: var(--text-muted);
+    font-size: 14px;
+  }
+  .detail-card {
+    background: white;
+    border-radius: 10px;
+    border: 1px solid var(--gray-border);
+    padding: 18px;
+    margin-bottom: 14px;
+  }
+  .detail-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 14px;
+  }
+  .detail-name { font-size: 17px; font-weight: 600; color: var(--dark); }
+  .detail-cat { font-size: 12px; color: var(--text-muted); margin-top: 3px; }
+  .detail-stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+  .detail-stat {
+    background: #f8f8f8;
+    border-radius: 8px;
+    padding: 10px;
+    text-align: center;
+  }
+  .detail-stat-label { font-size: 10px; text-transform: uppercase; color: var(--text-muted); margin-bottom: 4px; }
+  .detail-stat-value { font-size: 16px; font-weight: 600; }
+  .progress-wrap { margin-bottom: 14px; }
+  .progress-bar {
+    height: 6px;
+    background: #eee;
+    border-radius: 3px;
+    overflow: hidden;
+    margin-bottom: 4px;
+  }
+  .progress-fill { height: 100%; background: var(--green); border-radius: 3px; transition: width 0.3s; }
+  .progress-pct { font-size: 11px; color: var(--text-muted); text-align: right; }
+
+  /* ── HISTORIAL ── */
+  .historial-title {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-muted);
+    margin-bottom: 10px;
+  }
+  .pago-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 0;
+    border-bottom: 1px solid #f0f0f0;
+  }
+  .pago-item:last-child { border-bottom: none; }
+  .pago-left { flex: 1; }
+  .pago-tipo { font-size: 12px; font-weight: 500; color: var(--dark); }
+  .pago-meta { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+  .pago-monto { font-size: 13px; font-weight: 600; color: var(--green); }
+  .comp-tag {
+    font-size: 10px;
+    background: #fff3e0;
+    color: #e67e22;
+    padding: 1px 6px;
+    border-radius: 10px;
+    margin-left: 6px;
+  }
+  .empty-hist { font-size: 12px; color: var(--text-muted); text-align: center; padding: 10px 0; }
+
+  /* ── FORM PAGO ── */
+  .form-pago { margin-top: 4px; }
+  .form-row { margin-bottom: 10px; }
+  .form-label { font-size: 11px; font-weight: 600; color: var(--text-muted); margin-bottom: 4px; display: block; }
+  .form-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+  .form-control {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid var(--gray-border);
+    border-radius: 6px;
+    font-size: 13px;
+    color: var(--text);
+    outline: none;
+    background: white;
+  }
+  .form-control:focus { border-color: var(--red); }
+  .comp-toggle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    cursor: pointer;
+    padding: 6px 0;
+  }
+  .comp-toggle input { width: auto; }
+  .comp-extra { background: #fff8f0; border: 1px solid #f0d0a0; border-radius: 6px; padding: 10px; margin-bottom: 10px; }
+  .btn-guardar {
+    background: var(--red);
+    color: white;
+    border: none;
+    padding: 9px 0;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    width: 100%;
+  }
+  .btn-guardar:hover { background: #a93226; }
+  .btn-guardar:disabled { background: #ccc; cursor: not-allowed; }
+
+  /* ── MODAL NUEVO PROVEEDOR ── */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: white;
+    border-radius: 12px;
+    padding: 24px;
+    width: 460px;
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+  .modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 18px;
+  }
+  .modal-header h2 { font-size: 16px; font-weight: 600; }
+  .modal-close { background: none; border: none; font-size: 20px; cursor: pointer; color: var(--text-muted); }
+
+  /* ── TAB CAJA CHICA ── */
+  .cajachica-layout {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    padding: 20px;
+  }
+  .cajachica-form { background: white; border-radius: 10px; border: 1px solid var(--gray-border); padding: 18px; }
+  .cajachica-list { background: white; border-radius: 10px; border: 1px solid var(--gray-border); padding: 18px; }
+  .cajachica-title { font-size: 14px; font-weight: 600; color: var(--dark); margin-bottom: 14px; }
+  .gasto-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 0;
+    border-bottom: 1px solid #f0f0f0;
+    font-size: 12px;
+  }
+  .gasto-desc { font-weight: 500; color: var(--dark); }
+  .gasto-meta { color: var(--text-muted); font-size: 11px; margin-top: 1px; }
+  .gasto-monto { font-weight: 600; color: var(--red); }
+
+  /* ── TAB COMPENSADOS ── */
+  .comp-layout { padding: 20px; }
+  .comp-table {
+    background: white;
+    border-radius: 10px;
+    border: 1px solid var(--gray-border);
+    overflow: hidden;
+  }
+  .comp-table table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .comp-table th {
+    background: #f8f8f8;
+    padding: 10px 14px;
+    text-align: left;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-muted);
+    border-bottom: 1px solid var(--gray-border);
+  }
+  .comp-table td {
+    padding: 10px 14px;
+    border-bottom: 1px solid #f0f0f0;
+    color: var(--dark);
+  }
+  .comp-table tr:last-child td { border-bottom: none; }
+
+  /* ── TOAST ── */
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(80px);
+    background: var(--dark);
+    color: white;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-size: 13px;
+    z-index: 9999;
+    transition: transform 0.3s;
+    pointer-events: none;
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+  .toast.success { background: var(--green); }
+  .toast.error { background: var(--red); }
+
+  /* ── BADGE ESTADO ── */
+  .badge {
+    display: inline-block;
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-weight: 600;
+  }
+  .badge-sinpago { background: #fdecea; color: var(--red); }
+  .badge-parcial { background: #fff3e0; color: #e67e22; }
+  .badge-cancelado { background: #e8f5e9; color: var(--green); }
+  .badge-prevision { background: #e8eaf6; color: #3949ab; }
+
+  /* ── LOADING ── */
+  .loading { text-align: center; padding: 40px; color: var(--text-muted); }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="app-header">
+  <div>
+    <h1>🍺 BirraFest VII — Egresos</h1>
+    <span>Gestión de pagos a proveedores y artistas</span>
+  </div>
+  <div class="header-btns">
+    <button onclick="abrirModalProveedor()">+ Nuevo proveedor</button>
+  </div>
+</div>
+
+<!-- MÉTRICAS -->
+<div class="metrics">
+  <div class="metric-card">
+    <div class="metric-label">Total comprometido</div>
+    <div class="metric-value" id="m-total">—</div>
+  </div>
+  <div class="metric-card">
+    <div class="metric-label">Total pagado</div>
+    <div class="metric-value green" id="m-pagado">—</div>
+  </div>
+  <div class="metric-card">
+    <div class="metric-label">Pendiente de pago</div>
+    <div class="metric-value red" id="m-pendiente">—</div>
+  </div>
+  <div class="metric-card">
+    <div class="metric-label">Caja chica gastada</div>
+    <div class="metric-value orange" id="m-cajachica">—</div>
+  </div>
+</div>
+
+<!-- TABS -->
+<div class="tabs-nav">
+  <button class="tab-btn active" onclick="cambiarTab('proveedores', this)">Proveedores y pagos</button>
+  <button class="tab-btn" onclick="cambiarTab('compensados', this)">Pagos compensados</button>
+  <button class="tab-btn" onclick="cambiarTab('cajachica', this)">Caja chica</button>
+</div>
+
+<!-- TAB: PROVEEDORES -->
+<div class="tab-content active" id="tab-proveedores">
+  <div class="prov-layout">
+    <div class="prov-sidebar">
+      <div class="sidebar-header">
+        <h3>Proveedores (<span id="total-prov">0</span>)</h3>
+        <button class="btn-add-prov" onclick="abrirModalProveedor()">+ Nuevo</button>
+      </div>
+      <div class="search-box">
+        <input type="text" id="buscador" placeholder="Buscar por nombre o servicio..." oninput="filtrarProveedores()" />
+      </div>
+      <div class="prov-list" id="prov-list">
+        <div class="loading">Cargando...</div>
+      </div>
+    </div>
+    <div class="prov-detail" id="prov-detail">
+      <div class="detail-empty">Seleccioná un proveedor para ver el detalle</div>
+    </div>
+  </div>
+</div>
+
+<!-- TAB: COMPENSADOS -->
+<div class="tab-content" id="tab-compensados">
+  <div class="comp-layout">
+    <h3 style="font-size:14px;font-weight:600;color:var(--dark);margin-bottom:14px;">Pagos compensados — Expositor paga directo al proveedor</h3>
+    <div class="comp-table">
+      <table>
+        <thead>
+          <tr>
+            <th>Fecha</th>
+            <th>Proveedor</th>
+            <th>Expositor que pagó</th>
+            <th>Vía</th>
+            <th>Monto</th>
+            <th>Nota</th>
+          </tr>
+        </thead>
+        <tbody id="comp-tbody">
+          <tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:20px;">Sin pagos compensados registrados</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- TAB: CAJA CHICA -->
+<div class="tab-content" id="tab-cajachica">
+  <div class="cajachica-layout">
+    <div class="cajachica-form">
+      <div class="cajachica-title">Registrar gasto</div>
+      <div class="form-row">
+        <label class="form-label">Fecha</label>
+        <input class="form-control" type="date" id="cc-fecha" />
+      </div>
+      <div class="form-row">
+        <label class="form-label">Descripción del gasto</label>
+        <input class="form-control" type="text" id="cc-desc" placeholder="Ej: sogas para guirnaldas, banderas, etc." />
+      </div>
+      <div class="form-grid-2">
+        <div>
+          <label class="form-label">Monto</label>
+          <input class="form-control" type="number" id="cc-monto" placeholder="0" />
+        </div>
+        <div>
+          <label class="form-label">Forma de pago</label>
+          <select class="form-control" id="cc-forma">
+            <option>Efectivo</option>
+            <option>Transferencia</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <label class="form-label">Nota (opcional)</label>
+        <input class="form-control" type="text" id="cc-nota" placeholder="Proveedor, detalle adicional..." />
+      </div>
+      <button class="btn-guardar" onclick="guardarCajaChica()">Guardar gasto</button>
+    </div>
+    <div class="cajachica-list">
+      <div class="cajachica-title">Gastos registrados</div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:12px;">
+        <span style="font-size:12px;color:var(--text-muted);">Total gastado:</span>
+        <span style="font-size:14px;font-weight:700;color:var(--red);" id="cc-total-label">$0</span>
+      </div>
+      <div id="cc-lista"><div class="loading">Cargando...</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL NUEVO/EDITAR PROVEEDOR -->
+<div class="modal-overlay" id="modal-prov">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="modal-prov-title">Nuevo proveedor</h2>
+      <button class="modal-close" onclick="cerrarModalProveedor()">✕</button>
+    </div>
+    <input type="hidden" id="mp-id" />
+    <div class="form-row">
+      <label class="form-label">Nombre / Razón social</label>
+      <input class="form-control" type="text" id="mp-nombre" placeholder="Ej: Claudio Navarro" />
+    </div>
+    <div class="form-grid-2">
+      <div>
+        <label class="form-label">Categoría</label>
+        <select class="form-control" id="mp-cat">
+          <option>Artista</option>
+          <option>Conducción</option>
+          <option>Derechos de autor</option>
+          <option>Seguro/Permiso</option>
+          <option>Infraestructura</option>
+          <option>Infraestructura show</option>
+          <option>Producción escénica</option>
+          <option>Seguridad</option>
+          <option>Limpieza</option>
+          <option>Alimentación staff</option>
+          <option>Comunicación</option>
+          <option>Comunicación digital</option>
+          <option>Comunicación impresa</option>
+          <option>Staff</option>
+          <option>Decoración</option>
+          <option>Insumos</option>
+          <option>Previsión</option>
+          <option>Varios</option>
+        </select>
+      </div>
+      <div>
+        <label class="form-label">Monto acordado ($)</label>
+        <input class="form-control" type="number" id="mp-monto" placeholder="0" />
+      </div>
+    </div>
+    <div class="form-row">
+      <label class="form-label">Servicio / Descripción</label>
+      <input class="form-control" type="text" id="mp-servicio" placeholder="Ej: Mesas y sillas 85 juegos" />
+    </div>
+    <div class="form-row">
+      <label class="form-label">Notas</label>
+      <input class="form-control" type="text" id="mp-notas" placeholder="Estimado, por confirmar, condición de pago..." />
+    </div>
+    <button class="btn-guardar" onclick="guardarProveedor()">Guardar proveedor</button>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ─── CONFIG ────────────────────────────────────────────────────────────────
+var SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz_l2AD0LtXP7P7DZURn9b-F5trk66Fbzz9X_oMAUhpqwqVbHBnEoDbMN4zChKc7APW/exec';
+
+// ─── ESTADO ────────────────────────────────────────────────────────────────
+var state = {
+  proveedores: [],
+  pagos: [],
+  cajaChica: [],
+  proveedorSeleccionado: null,
+  filtro: ''
+};
+
+// ─── INIT ──────────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', function() {
+  setFechaHoy('cc-fecha');
+  cargarDatos();
+});
+
+function cargarDatos() {
+  var callbackName = 'cb_' + Date.now();
+  var script = document.createElement('script');
+  window[callbackName] = function(data) {
+    delete window[callbackName];
+    if (script.parentNode) script.parentNode.removeChild(script);
+    state.proveedores = data.proveedores || [];
+    state.pagos = data.pagos || [];
+    state.cajaChica = data.cajaChica || [];
+    renderTodo();
+  };
+  script.onerror = function() {
+    delete window[callbackName];
+    toast('Error al cargar datos', 'error');
+  };
+  script.src = SCRIPT_URL + '?action=datos&callback=' + callbackName;
+  document.head.appendChild(script);
+}
+
+function renderTodo() {
+  renderMetricas();
+  renderProveedores();
+  renderCajaChica();
+  renderCompensados();
+  document.getElementById('total-prov').textContent = state.proveedores.length;
+}
+
+// ─── MÉTRICAS ──────────────────────────────────────────────────────────────
+function renderMetricas() {
+  var totalAcordado = 0, totalPagado = 0, totalCC = 0;
+  state.proveedores.forEach(function(p) {
+    totalAcordado += Number(p.montoAcordado) || 0;
+  });
+  state.pagos.forEach(function(p) {
+    if (!p.compensado) totalPagado += Number(p.monto) || 0;
+  });
+  state.cajaChica.forEach(function(g) {
+    totalCC += Number(g.monto) || 0;
+  });
+  document.getElementById('m-total').textContent = fmt(totalAcordado);
+  document.getElementById('m-pagado').textContent = fmt(totalPagado);
+  document.getElementById('m-pendiente').textContent = fmt(totalAcordado - totalPagado);
+  document.getElementById('m-cajachica').textContent = fmt(totalCC);
+}
+
+// ─── LISTA PROVEEDORES ─────────────────────────────────────────────────────
+function renderProveedores() {
+  var lista = document.getElementById('prov-list');
+  var filtro = state.filtro.toLowerCase();
+  var provs = state.proveedores.filter(function(p) {
+    return !filtro || p.nombre.toLowerCase().includes(filtro) || p.servicio.toLowerCase().includes(filtro) || p.categoria.toLowerCase().includes(filtro);
+  });
+
+  if (provs.length === 0) {
+    lista.innerHTML = '<div class="loading">Sin resultados</div>';
+    return;
+  }
+
+  // Agrupar por categoría
+  var grupos = {};
+  provs.forEach(function(p) {
+    if (!grupos[p.categoria]) grupos[p.categoria] = [];
+    grupos[p.categoria].push(p);
+  });
+
+  var html = '';
+  Object.keys(grupos).sort().forEach(function(cat) {
+    html += '<div class="cat-label">' + cat + '</div>';
+    grupos[cat].forEach(function(p) {
+      var pagado = getPagadoPor(p.id);
+      var acordado = Number(p.montoAcordado) || 0;
+      var pendiente = acordado - pagado;
+      var estado = getEstado(pagado, acordado);
+      var sel = state.proveedorSeleccionado && state.proveedorSeleccionado.id === p.id ? ' selected' : '';
+      var pendClass = pendiente <= 0 ? 'green' : (pagado > 0 ? 'orange' : 'red');
+      var pendText = pendiente <= 0 ? 'Cancelado ✓' : (pagado > 0 ? 'Parcial · falta ' + fmt(pendiente) : 'Pendiente ' + fmt(pendiente));
+      html += '<div class="prov-row' + sel + '" onclick="seleccionarProveedor(\'' + p.id + '\')">';
+      html += '<div><div class="prov-name">' + escH(p.nombre) + '</div>';
+      html += '<div class="prov-servicio">' + escH(p.servicio) + '</div></div>';
+      html += '<div class="prov-right"><div class="prov-acordado">' + fmt(acordado) + '</div>';
+      html += '<div class="prov-pendiente ' + pendClass + '">' + pendText + '</div></div>';
+      html += '</div>';
+    });
+  });
+  lista.innerHTML = html;
+}
+
+function filtrarProveedores() {
+  state.filtro = document.getElementById('buscador').value;
+  renderProveedores();
+}
+
+function seleccionarProveedor(id) {
+  state.proveedorSeleccionado = state.proveedores.find(function(p) { return p.id === id; });
+  renderProveedores();
+  renderDetalle();
+}
+
+// ─── DETALLE PROVEEDOR ─────────────────────────────────────────────────────
+function renderDetalle() {
+  var panel = document.getElementById('prov-detail');
+  var p = state.proveedorSeleccionado;
+  if (!p) { panel.innerHTML = '<div class="detail-empty">Seleccioná un proveedor para ver el detalle</div>'; return; }
+
+  var pagado = getPagadoPor(p.id);
+  var acordado = Number(p.montoAcordado) || 0;
+  var pendiente = acordado - pagado;
+  var pct = acordado > 0 ? Math.min(100, Math.round(pagado / acordado * 100)) : 0;
+  var estado = getEstado(pagado, acordado);
+  var badgeClass = estado === 'Sin pago' ? 'badge-sinpago' : (estado === 'Cancelado' ? 'badge-cancelado' : 'badge-parcial');
+  if (p.categoria === 'Previsión') badgeClass = 'badge-prevision';
+
+  var pagosProv = state.pagos.filter(function(pg) { return pg.idProveedor === p.id; });
+
+  var histHTML = '';
+  if (pagosProv.length === 0) {
+    histHTML = '<div class="empty-hist">Sin pagos registrados</div>';
+  } else {
+    pagosProv.forEach(function(pg) {
+      var compTag = pg.compensado ? '<span class="comp-tag">COMP · ' + escH(pg.quienTransfirio || '') + '</span>' : '';
+      histHTML += '<div class="pago-item">';
+      histHTML += '<div class="pago-left"><div class="pago-tipo">' + escH(pg.tipo) + compTag + '</div>';
+      histHTML += '<div class="pago-meta">' + escH(pg.fecha) + ' · ' + escH(pg.formaPago) + (pg.nota ? ' · ' + escH(pg.nota) : '') + '</div></div>';
+      histHTML += '<div class="pago-monto">' + fmt(pg.monto) + '</div>';
+      histHTML += '</div>';
+    });
+  }
+
+  panel.innerHTML = '<div class="detail-card">' +
+    '<div class="detail-top">' +
+    '<div><div class="detail-name">' + escH(p.nombre) + '</div>' +
+    '<div class="detail-cat">' + escH(p.categoria) + (p.servicio ? ' · ' + escH(p.servicio) : '') + '</div></div>' +
+    '<div><span class="badge ' + badgeClass + '">' + estado + '</span>' +
+    '<button onclick="editarProveedor(\'' + p.id + '\')" style="margin-left:8px;background:none;border:1px solid var(--gray-border);padding:4px 8px;border-radius:5px;cursor:pointer;font-size:11px;color:var(--text-muted);">Editar</button></div>' +
+    '</div>' +
+    '<div class="detail-stats">' +
+    '<div class="detail-stat"><div class="detail-stat-label">Acordado</div><div class="detail-stat-value" style="color:var(--dark);">' + fmt(acordado) + '</div></div>' +
+    '<div class="detail-stat"><div class="detail-stat-label">Pagado</div><div class="detail-stat-value" style="color:var(--green);">' + fmt(pagado) + '</div></div>' +
+    '<div class="detail-stat"><div class="detail-stat-label">Pendiente</div><div class="detail-stat-value" style="color:var(--red);">' + fmt(pendiente) + '</div></div>' +
+    '</div>' +
+    '<div class="progress-wrap"><div class="progress-bar"><div class="progress-fill" style="width:' + pct + '%;"></div></div>' +
+    '<div class="progress-pct">' + pct + '% pagado</div></div>' +
+    (p.notas ? '<div style="font-size:11px;color:var(--text-muted);background:#f8f8f8;padding:7px 10px;border-radius:6px;margin-bottom:10px;">📝 ' + escH(p.notas) + '</div>' : '') +
+    '</div>' +
+    '<div class="detail-card">' +
+    '<div class="historial-title">Historial de pagos</div>' + histHTML +
+    '</div>' +
+    '<div class="detail-card">' +
+    '<div class="historial-title">Registrar nuevo pago</div>' +
+    '<div class="form-pago">' +
+    '<div class="form-grid-2">' +
+    '<div><label class="form-label">Tipo</label><select class="form-control" id="fp-tipo"><option>Anticipo</option><option>Pago a cuenta</option><option>Cancelación</option></select></div>' +
+    '<div><label class="form-label">Fecha</label><input class="form-control" type="date" id="fp-fecha" value="' + hoy() + '" /></div>' +
+    '</div>' +
+    '<div class="form-grid-2">' +
+    '<div><label class="form-label">Monto ($)</label><input class="form-control" type="number" id="fp-monto" placeholder="0" /></div>' +
+    '<div><label class="form-label">Forma de pago</label><select class="form-control" id="fp-forma"><option>Efectivo</option><option>Transferencia</option></select></div>' +
+    '</div>' +
+    '<label class="comp-toggle"><input type="checkbox" id="fp-comp" onchange="toggleComp()" /> Pago compensado (expositor paga al proveedor)</label>' +
+    '<div class="comp-extra" id="comp-extra" style="display:none;">' +
+    '<label class="form-label">¿Quién transfirió? (nombre del expositor o "Cuenta Carolina")</label>' +
+    '<input class="form-control" type="text" id="fp-quien" placeholder="Ej: Walnuss Brewing / Cuenta Carolina" />' +
+    '</div>' +
+    '<div class="form-row" style="margin-top:10px;">' +
+    '<label class="form-label">Nota (opcional)</label>' +
+    '<input class="form-control" type="text" id="fp-nota" placeholder="Ej: anticipo vía Carlos, efectivo día evento..." />' +
+    '</div>' +
+    '<button class="btn-guardar" onclick="guardarPago()">Guardar pago</button>' +
+    '</div></div>';
+}
+
+function toggleComp() {
+  var cb = document.getElementById('fp-comp');
+  var extra = document.getElementById('comp-extra');
+  if (extra) extra.style.display = cb.checked ? 'block' : 'none';
+}
+
+// ─── GUARDAR PAGO ──────────────────────────────────────────────────────────
+function guardarPago() {
+  var p = state.proveedorSeleccionado;
+  if (!p) return;
+  var monto = parseFloat(document.getElementById('fp-monto').value);
+  if (!monto || monto <= 0) { toast('Ingresá un monto válido', 'error'); return; }
+
+  var comp = document.getElementById('fp-comp').checked;
+  var data = {
+    tipo: 'pago',
+    fecha: document.getElementById('fp-fecha').value,
+    idProveedor: p.id,
+    tipo: document.getElementById('fp-tipo').value,
+    monto: monto,
+    formaPago: document.getElementById('fp-forma').value,
+    compensado: comp,
+    quienTransfirio: comp ? document.getElementById('fp-quien').value : '',
+    nota: document.getElementById('fp-nota').value
+  };
+
+  postData(data, function() {
+    toast('Pago registrado ✓', 'success');
+    cargarDatos();
+    setTimeout(function() { seleccionarProveedor(p.id); }, 600);
+  });
+}
+
+// ─── MODAL PROVEEDOR ───────────────────────────────────────────────────────
+function abrirModalProveedor(id) {
+  document.getElementById('mp-id').value = '';
+  document.getElementById('mp-nombre').value = '';
+  document.getElementById('mp-cat').value = 'Artista';
+  document.getElementById('mp-monto').value = '';
+  document.getElementById('mp-servicio').value = '';
+  document.getElementById('mp-notas').value = '';
+  document.getElementById('modal-prov-title').textContent = 'Nuevo proveedor';
+  document.getElementById('modal-prov').classList.add('open');
+}
+
+function editarProveedor(id) {
+  var p = state.proveedores.find(function(x) { return x.id === id; });
+  if (!p) return;
+  document.getElementById('mp-id').value = p.id;
+  document.getElementById('mp-nombre').value = p.nombre;
+  document.getElementById('mp-cat').value = p.categoria;
+  document.getElementById('mp-monto').value = p.montoAcordado;
+  document.getElementById('mp-servicio').value = p.servicio;
+  document.getElementById('mp-notas').value = p.notas || '';
+  document.getElementById('modal-prov-title').textContent = 'Editar proveedor';
+  document.getElementById('modal-prov').classList.add('open');
+}
+
+function cerrarModalProveedor() {
+  document.getElementById('modal-prov').classList.remove('open');
+}
+
+function guardarProveedor() {
+  var nombre = document.getElementById('mp-nombre').value.trim();
+  var monto = parseFloat(document.getElementById('mp-monto').value) || 0;
+  if (!nombre) { toast('Ingresá un nombre', 'error'); return; }
+
+  var id = document.getElementById('mp-id').value;
+  var data = {
+    tipo: id ? 'editarProveedor' : 'proveedor',
+    id: id,
+    nombre: nombre,
+    categoria: document.getElementById('mp-cat').value,
+    montoAcordado: monto,
+    servicio: document.getElementById('mp-servicio').value.trim(),
+    notas: document.getElementById('mp-notas').value.trim()
+  };
+
+  postData(data, function() {
+    toast((id ? 'Proveedor actualizado' : 'Proveedor guardado') + ' ✓', 'success');
+    cerrarModalProveedor();
+    cargarDatos();
+  });
+}
+
+// ─── CAJA CHICA ────────────────────────────────────────────────────────────
+function renderCajaChica() {
+  var lista = document.getElementById('cc-lista');
+  var total = 0;
+  if (state.cajaChica.length === 0) {
+    lista.innerHTML = '<div class="loading">Sin gastos registrados</div>';
+  } else {
+    var html = '';
+    state.cajaChica.slice().reverse().forEach(function(g) {
+      total += Number(g.monto) || 0;
+      html += '<div class="gasto-row">';
+      html += '<div><div class="gasto-desc">' + escH(g.descripcion) + '</div>';
+      html += '<div class="gasto-meta">' + escH(g.fecha) + ' · ' + escH(g.formaPago) + (g.nota ? ' · ' + escH(g.nota) : '') + '</div></div>';
+      html += '<div class="gasto-monto">' + fmt(g.monto) + '</div>';
+      html += '</div>';
+    });
+    lista.innerHTML = html;
+  }
+  document.getElementById('cc-total-label').textContent = fmt(total);
+}
+
+function guardarCajaChica() {
+  var desc = document.getElementById('cc-desc').value.trim();
+  var monto = parseFloat(document.getElementById('cc-monto').value);
+  if (!desc) { toast('Ingresá una descripción', 'error'); return; }
+  if (!monto || monto <= 0) { toast('Ingresá un monto válido', 'error'); return; }
+
+  var data = {
+    tipo: 'cajachica',
+    fecha: document.getElementById('cc-fecha').value,
+    descripcion: desc,
+    monto: monto,
+    formaPago: document.getElementById('cc-forma').value,
+    nota: document.getElementById('cc-nota').value.trim()
+  };
+
+  postData(data, function() {
+    toast('Gasto registrado ✓', 'success');
+    document.getElementById('cc-desc').value = '';
+    document.getElementById('cc-monto').value = '';
+    document.getElementById('cc-nota').value = '';
+    cargarDatos();
+  });
+}
+
+// ─── COMPENSADOS ───────────────────────────────────────────────────────────
+function renderCompensados() {
+  var tbody = document.getElementById('comp-tbody');
+  var comps = state.pagos.filter(function(p) { return p.compensado; });
+  if (comps.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:20px;">Sin pagos compensados registrados</td></tr>';
+    return;
+  }
+  var html = '';
+  comps.forEach(function(pg) {
+    var prov = state.proveedores.find(function(p) { return p.id === pg.idProveedor; });
+    html += '<tr>';
+    html += '<td>' + escH(pg.fecha) + '</td>';
+    html += '<td>' + escH(prov ? prov.nombre : pg.idProveedor) + '</td>';
+    html += '<td>' + escH(pg.quienTransfirio || '—') + '</td>';
+    html += '<td>' + escH(pg.formaPago) + '</td>';
+    html += '<td style="font-weight:600;">' + fmt(pg.monto) + '</td>';
+    html += '<td style="color:var(--text-muted);">' + escH(pg.nota || '—') + '</td>';
+    html += '</tr>';
+  });
+  tbody.innerHTML = html;
+}
+
+// ─── TABS ──────────────────────────────────────────────────────────────────
+function cambiarTab(nombre, btn) {
+  document.querySelectorAll('.tab-content').forEach(function(el) { el.classList.remove('active'); });
+  document.querySelectorAll('.tab-btn').forEach(function(el) { el.classList.remove('active'); });
+  document.getElementById('tab-' + nombre).classList.add('active');
+  btn.classList.add('active');
+}
+
+// ─── POST DATA ─────────────────────────────────────────────────────────────
+function postData(data, callback) {
+  var encoded = 'payload=' + encodeURIComponent(JSON.stringify(data));
+  fetch(SCRIPT_URL, {
+    method: 'POST',
+    mode: 'no-cors',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: encoded
+  }).then(function() {
+    setTimeout(function() {
+      if (callback) callback();
+    }, 1500);
+  }).catch(function(err) {
+    toast('Error al guardar', 'error');
+    console.error(err);
+  });
+}
+
+// ─── HELPERS ───────────────────────────────────────────────────────────────
+function getPagadoPor(id) {
+  return state.pagos.filter(function(p) { return p.idProveedor === id; })
+    .reduce(function(sum, p) { return sum + (Number(p.monto) || 0); }, 0);
+}
+
+function getEstado(pagado, acordado) {
+  if (pagado <= 0) return 'Sin pago';
+  if (pagado >= acordado) return 'Cancelado';
+  return 'Parcial';
+}
+
+function fmt(n) {
+  return '$ ' + Math.round(Number(n) || 0).toLocaleString('es-AR');
+}
+
+function hoy() {
+  return new Date().toISOString().split('T')[0];
+}
+
+function setFechaHoy(id) {
+  var el = document.getElementById(id);
+  if (el) el.value = hoy();
+}
+
+function escH(str) {
+  if (!str) return '';
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function toast(msg, tipo) {
+  var t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast ' + (tipo || '');
+  t.classList.add('show');
+  setTimeout(function() { t.classList.remove('show'); }, 3000);
+}
+</script>
+</body>
+</html>
