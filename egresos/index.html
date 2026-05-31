@@ -984,7 +984,9 @@ function cambiarTab(nombre, btn) {
 // ─── RECIBO DE PAGO ────────────────────────────────────────────────────────
 function imprimirRecibo(datos) {
   var p = datos.proveedor;
-  var pagosAnteriores = state.pagos.filter(function(pg) { return pg.idProveedor === p.id; });
+  // Obtener todos los pagos del proveedor y excluir el último (es el pago actual)
+  var todosLosPagos = state.pagos.filter(function(pg) { return pg.idProveedor === p.id; });
+  var pagosAnteriores = todosLosPagos.slice(0, todosLosPagos.length - 1);
   var totalAnterior = pagosAnteriores.reduce(function(s, pg) { return s + (Number(pg.monto) || 0); }, 0);
   var totalConEste = totalAnterior + datos.monto;
   var acordado = Number(p.montoAcordado) || 0;
