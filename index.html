@@ -288,6 +288,7 @@ header p{font-size:11px;opacity:0.8;margin-top:2px;}
   <div class="nav">
     <button class="nav-tab active" onclick="switchTab('expositor')">📋 Nuevo expositor</button>
     <button class="nav-tab" onclick="switchTab('saldos')">💰 Pagos de saldo</button>
+    <button class="nav-tab" onclick="switchTab('preconf')">📝 Pre-confirmados</button>
   </div>
   <div class="panels">
 
@@ -444,6 +445,49 @@ header p{font-size:11px;opacity:0.8;margin-top:2px;}
       </div>
     </div>
 
+    <!-- PANEL 3: PRE-CONFIRMADOS -->
+    <div class="panel" id="panel-preconf">
+      <div class="col-pago">
+        <div class="card">
+          <div class="card-hdr">▸ Pre-registrar expositor</div>
+          <div class="field"><label>Titular</label><input type="text" id="pc-nombre" placeholder="Nombre del responsable"></div>
+          <div class="field"><label>Nombre de fantasía</label><input type="text" id="pc-stand" placeholder="Ej: Pipa, Walnuss"></div>
+          <div class="field"><label>Teléfono</label><input type="text" id="pc-telefono" placeholder="381-123-4567"></div>
+          <div class="field">
+            <label>Tipo de stand (opcional)</label>
+            <select id="pc-tipo">
+              <option value="">Sin definir</option>
+              <option value="Food Truck">Food Truck</option>
+              <option value="Beer Truck">Beer Truck</option>
+              <option value="Carpa gastronómica">Carpa gastronómica</option>
+              <option value="Carpa cerveza">Carpa cerveza</option>
+              <option value="Parrilla">Parrilla</option>
+              <option value="Otro">Otro</option>
+              <option value="Sponsor">Sponsor</option>
+            </select>
+          </div>
+          <div class="field"><label>Fecha</label><input type="date" id="pc-fecha-date"></div>
+          <div class="field"><label>Nota</label><input type="text" id="pc-nota" placeholder="Ej: confirmo por WhatsApp"></div>
+          <button class="btn primary" id="btn-pc-guardar" onclick="guardarPreconf()" style="justify-content:center;margin-top:4px;">Guardar pre-confirmado</button>
+        </div>
+      </div>
+      <div class="col-control">
+        <div class="control-top">
+          <div style="display:flex;align-items:center;justify-content:space-between;">
+            <span style="font-size:12px;font-weight:700;color:var(--dark);">Pre-confirmados (sin pago aun)</span>
+            <span style="font-size:11px;color:var(--gray-text);" id="pc-count">—</span>
+          </div>
+        </div>
+        <div style="flex:1;overflow-y:auto;padding:0.8rem 1rem;">
+          <div id="pc-loading" class="ctrl-empty">Cargando...</div>
+          <table class="ctrl-table" id="pc-table" style="display:none;">
+            <thead><tr><th>Stand / Titular</th><th>Tipo</th><th>Nota</th><th></th></tr></thead>
+            <tbody id="pc-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
   </div>
 </div>
 
@@ -469,7 +513,7 @@ document.getElementById('fecha-date').value=hoyISO();
 document.getElementById('fecha').value=fechaHoy();
 document.querySelectorAll('#tipo-group input[type=radio]').forEach(r=>{r.addEventListener('change',()=>{document.querySelectorAll('#tipo-group label').forEach(l=>l.classList.remove('selected'));r.closest('label').classList.add('selected');syncDocs();});});
 let tabActiva='expositor';
-function switchTab(tab){tabActiva=tab;document.querySelectorAll('.nav-tab').forEach((t,i)=>t.classList.toggle('active',['expositor','saldos'][i]===tab));['expositor','saldos'].forEach(p=>document.getElementById('panel-'+p).classList.toggle('active',p===tab));if(tab==='saldos')iniciarPanelSaldos();}
+function switchTab(tab){tabActiva=tab;document.querySelectorAll('.nav-tab').forEach((t,i)=>t.classList.toggle('active',['expositor','saldos','preconf'][i]===tab));['expositor','saldos','preconf'].forEach(p=>document.getElementById('panel-'+p).classList.toggle('active',p===tab));if(tab==='saldos')iniciarPanelSaldos();if(tab==='preconf')iniciarPanelPreconf();}
 function showToast(msg,type='success'){const t=document.getElementById('toast');t.textContent=msg;t.className='toast show '+type;setTimeout(()=>{t.className='toast';},3500);}
 function v(val,ph='...'){if(!val&&val!==0)return '<span style="color:#bbb;font-style:italic;">'+ph+'</span>';return val;}
 function fmt(n){if(!n&&n!==0)return '—';return '$ '+Number(n).toLocaleString('es-AR');}
@@ -592,6 +636,73 @@ function imprimirEstadoCuenta(nombre){
   document.getElementById('print-estado-cuenta').innerHTML=html;
   activarPrint(['print-estado-cuenta']);
   setTimeout(()=>{window.print();setTimeout(limpiarPrint,500);},150);
+}
+
+// ── PANEL PRE-CONFIRMADOS ──
+let preconfIniciado=false;
+let regPreconf=[];
+async function iniciarPanelPreconf(){
+  const pf=document.getElementById('pc-fecha-date');
+  if(pf&&!pf.value)pf.value=hoyISO();
+  await cargarPreconf();
+}
+async function cargarPreconf(){
+  document.getElementById('pc-loading').textContent='Cargando...';
+  document.getElementById('pc-loading').style.display='block';
+  document.getElementById('pc-table').style.display='none';
+  try{
+    const resp=await fetch(WEBAPP_URL+'?action=saldos',{method:'GET',mode:'cors'});
+    const data=await resp.json();
+    regPreconf=data.preconfirmados||[];
+    renderPreconf();
+  }catch(e){document.getElementById('pc-loading').textContent='Error al cargar.';}
+}
+function renderPreconf(){
+  const tbody=document.getElementById('pc-tbody');
+  const loading=document.getElementById('pc-loading');
+  const table=document.getElementById('pc-table');
+  document.getElementById('pc-count').textContent=regPreconf.length+' en espera';
+  if(!regPreconf.length){loading.textContent='No hay pre-confirmados.';loading.style.display='block';table.style.display='none';return;}
+  tbody.innerHTML=regPreconf.map((r,i)=>'<tr><td><strong>'+(r.stand||'—')+'</strong><br><span style="font-size:10px;color:#888;">'+(r.nombre||'')+(r.telefono?' · '+r.telefono:'')+'</span></td><td style="font-size:11px;">'+(r.tipoStand||'<span style=\'color:#bbb;\'>sin definir</span>')+'</td><td style="font-size:10px;color:#666;">'+(r.nota||'')+'</td><td style="white-space:nowrap;"><button class="btn sm primary" style="padding:3px 7px;font-size:10px;" onclick="confirmarPreconf('+i+')">✓ Dar de alta</button> <button class="btn sm" style="padding:3px 7px;font-size:10px;" onclick="quitarPreconf('+i+')">🗑</button></td></tr>').join('');
+  loading.style.display='none';
+  table.style.display='table';
+}
+async function guardarPreconf(){
+  const nombre=document.getElementById('pc-nombre').value.trim();
+  const stand=document.getElementById('pc-stand').value.trim();
+  if(!stand){showToast('Ingresá el nombre del stand','error');return;}
+  const fIso=document.getElementById('pc-fecha-date').value;
+  const d={tipo:'preconfirmado',fecha:fIso?isoATexto(fIso):fechaHoy(),nombre:nombre,stand:stand,telefono:document.getElementById('pc-telefono').value.trim(),tipoStand:document.getElementById('pc-tipo').value,nota:document.getElementById('pc-nota').value.trim()};
+  const btn=document.getElementById('btn-pc-guardar');btn.disabled=true;btn.textContent='Guardando...';
+  try{
+    await fetch(WEBAPP_URL,{method:'POST',mode:'no-cors',headers:{'Content-Type':'application/json'},body:JSON.stringify(d)});
+    regPreconf.push({fecha:d.fecha,nombre:d.nombre,stand:d.stand,telefono:d.telefono,tipoStand:d.tipoStand,nota:d.nota});
+    renderPreconf();
+    document.getElementById('pc-nombre').value='';document.getElementById('pc-stand').value='';document.getElementById('pc-telefono').value='';document.getElementById('pc-tipo').value='';document.getElementById('pc-nota').value='';
+    showToast('✓ Pre-confirmado guardado');
+  }catch(e){showToast('Error al guardar','error');}
+  finally{btn.disabled=false;btn.innerHTML='Guardar pre-confirmado';}
+}
+function confirmarPreconf(i){
+  const r=regPreconf[i];if(!r)return;
+  // Llevar datos al formulario de Nuevo expositor
+  document.getElementById('nombre').value=r.nombre||'';
+  document.getElementById('stand').value=r.stand||'';
+  document.getElementById('telefono').value=r.telefono||'';
+  if(r.tipoStand){document.querySelectorAll('#tipo-group input[type=radio]').forEach(radio=>{radio.checked=radio.value===r.tipoStand;radio.closest('label').classList.toggle('selected',radio.value===r.tipoStand);});}
+  syncDocs();
+  switchTab('expositor');
+  showToast('Datos cargados — completá canon y seña, luego quitá de pre-confirmados');
+}
+async function quitarPreconf(i){
+  const r=regPreconf[i];if(!r)return;
+  if(!confirm('¿Quitar a "'+r.stand+'" de pre-confirmados?'))return;
+  try{
+    await fetch(WEBAPP_URL,{method:'POST',mode:'no-cors',headers:{'Content-Type':'application/json'},body:JSON.stringify({tipo:'eliminar_preconf',stand:r.stand})});
+    regPreconf.splice(i,1);
+    renderPreconf();
+    showToast('✓ Quitado de pre-confirmados');
+  }catch(e){showToast('Error al quitar','error');}
 }
 </script>
 </body>
