@@ -131,6 +131,7 @@ tr:hover td{background:#fafbfc;}
     </div>
 
     <div id="comp-warn"></div>
+    <div id="sobrepago-warn"></div>
 
     <!-- RESUMEN COMPROMISOS -->
     <div class="section-title">Compromisos con proveedores</div>
@@ -295,8 +296,16 @@ function procesar(cobros,egresos){
   pagos.forEach(function(p){
     pagadoPorProv[p.idProveedor]=(pagadoPorProv[p.idProveedor]||0)+(Number(p.monto)||0);
   });
-  var cubierto=outEfectivo+outCaro+outComp;
-  var pendProv=comprometido-cubierto;
+  // Calcular por proveedor (suma individual, no global)
+  var cubierto=0, pendProv=0;
+  proveedores.forEach(function(p){
+    var pagado=pagadoPorProv[p.id]||0;
+    var acordado=Number(p.montoAcordado)||0;
+    // Cubierto: lo efectivamente pagado, sin exceder lo acordado
+    cubierto+=Math.min(pagado,acordado);
+    // Pendiente: solo si falta pagar (nunca negativo)
+    if(pagado<acordado)pendProv+=(acordado-pagado);
+  });
   document.getElementById('v-comprometido').textContent=fmt(comprometido);
   document.getElementById('v-cubierto').textContent=fmt(cubierto);
   document.getElementById('v-pend-prov').textContent=fmt(pendProv);
@@ -307,6 +316,21 @@ function procesar(cobros,egresos){
     var acordado=Number(p.montoAcordado)||0;
     return {nombre:p.nombre,servicio:p.servicio,acordado:acordado,pagado:pagado,pendiente:acordado-pagado};
   }).filter(function(p){return p.pendiente>0.5;}).sort(function(a,b){return b.pendiente-a.pendiente;});
+
+  // Detectar sobrepagos (pagado > acordado)
+  var sobrepagos=proveedores.map(function(p){
+    var pagado=pagadoPorProv[p.id]||0;
+    var acordado=Number(p.montoAcordado)||0;
+    return {nombre:p.nombre,servicio:p.servicio,acordado:acordado,pagado:pagado,exceso:pagado-acordado};
+  }).filter(function(p){return p.exceso>0.5;}).sort(function(a,b){return b.exceso-a.exceso;});
+  if(sobrepagos.length){
+    var rows=sobrepagos.map(function(p){
+      return '<div class="w-row"><span class="lbl">'+p.nombre+' <span style="color:#999;">('+(p.servicio||'')+')</span></span><span class="val neg">acordado '+fmt(p.acordado)+' · pagado '+fmt(p.pagado)+' · <strong>+'+fmt(p.exceso)+'</strong></span></div>';
+    }).join('');
+    document.getElementById('sobrepago-warn').innerHTML='<div style="background:#fff8e1;border:1px solid #f0d090;border-radius:12px;padding:14px 18px;margin:10px 0;"><div style="font-size:12px;font-weight:700;color:#b8860b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">⚠️ '+sobrepagos.length+' proveedor(es) con pago en exceso</div>'+rows+'</div>';
+  }else{
+    document.getElementById('sobrepago-warn').innerHTML='';
+  }
   document.getElementById('cnt-prov').textContent=provPend.length+' pendientes';
   document.getElementById('tb-prov').innerHTML=provPend.length?provPend.map(function(p){
     return '<tr><td><strong>'+p.nombre+'</strong><br><span style="font-size:10px;color:#999;">'+(p.servicio||'')+'</span></td><td class="num">'+fmt(p.acordado)+'</td><td class="num">'+fmt(p.pagado)+'</td><td class="num neg">'+fmt(p.pendiente)+'</td></tr>';
