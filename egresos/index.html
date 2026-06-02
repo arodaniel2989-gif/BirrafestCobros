@@ -448,8 +448,12 @@
     <div class="metric-value" id="m-total">—</div>
   </div>
   <div class="metric-card">
-    <div class="metric-label">Total pagado</div>
+    <div class="metric-label">Pagado (efectivo + Caro)</div>
     <div class="metric-value green" id="m-pagado">—</div>
+  </div>
+  <div class="metric-card">
+    <div class="metric-label">Compensados</div>
+    <div class="metric-value" id="m-compensado" style="color:#1A5276;">—</div>
   </div>
   <div class="metric-card">
     <div class="metric-label">Pendiente de pago</div>
@@ -660,19 +664,23 @@ function renderTodo() {
 
 // ─── MÉTRICAS ──────────────────────────────────────────────────────────────
 function renderMetricas() {
-  var totalAcordado = 0, totalPagado = 0, totalCC = 0;
+  var totalAcordado = 0, totalPagado = 0, totalCompensado = 0, totalCC = 0;
   state.proveedores.forEach(function(p) {
     totalAcordado += Number(p.montoAcordado) || 0;
   });
   state.pagos.forEach(function(p) {
-    if (!p.compensado) totalPagado += Number(p.monto) || 0;
+    if (p.compensado) totalCompensado += Number(p.monto) || 0;
+    else totalPagado += Number(p.monto) || 0;
   });
   state.cajaChica.forEach(function(g) {
     totalCC += Number(g.monto) || 0;
   });
+  // Pendiente = acordado - pagado real - compensado (ambos cancelan deuda con el proveedor)
+  var totalCubierto = totalPagado + totalCompensado;
   document.getElementById('m-total').textContent = fmt(totalAcordado);
   document.getElementById('m-pagado').textContent = fmt(totalPagado);
-  document.getElementById('m-pendiente').textContent = fmt(totalAcordado - totalPagado);
+  document.getElementById('m-compensado').textContent = fmt(totalCompensado);
+  document.getElementById('m-pendiente').textContent = fmt(totalAcordado - totalCubierto);
   document.getElementById('m-cajachica').textContent = fmt(totalCC);
 }
 
@@ -764,7 +772,7 @@ function renderDetalle() {
     '<div><div class="detail-name">' + escH(p.nombre) + '</div>' +
     '<div class="detail-cat">' + escH(p.categoria) + (p.servicio ? ' · ' + escH(p.servicio) : '') + '</div></div>' +
     '<div><span class="badge ' + badgeClass + '">' + estado + '</span>' +
-    '<button onclick="editarProveedor(\'' + p.id + '\')" style="margin-left:8px;background:none;border:1px solid var(--gray-border);padding:4px 8px;border-radius:5px;cursor:pointer;font-size:11px;color:var(--text-muted);">Editar</button></div>' +
+    '<button onclick="editarProveedor(\'' + p.id + '\')" style="margin-left:8px;background:none;border:1px solid var(--gray-border);padding:4px 8px;border-radius:5px;cursor:pointer;font-size:11px;color:var(--text-muted);">Editar</button><button onclick="reimprimirRecibo(\'' + p.id + '\')" style="margin-left:8px;background:none;border:1px solid #1a7a3a;padding:4px 8px;border-radius:5px;cursor:pointer;font-size:11px;color:#1a7a3a;">🖨 Reimprimir</button></div>' +
     '</div>' +
     '<div class="detail-stats">' +
     '<div class="detail-stat"><div class="detail-stat-label">Acordado</div><div class="detail-stat-value" style="color:var(--dark);">' + fmt(acordado) + '</div></div>' +
@@ -981,12 +989,37 @@ function cambiarTab(nombre, btn) {
 }
 
 
+
+// ─── REIMPRIMIR RECIBO ─────────────────────────────────────────────────────
+function reimprimirRecibo(id) {
+  var p = state.proveedores.find(function(x){ return x.id === id; });
+  if (!p) return;
+  var pagos = state.pagos.filter(function(x){ return x.idProveedor === id; });
+  if (pagos.length === 0) { toast('Sin pagos registrados para reimprimir', 'error'); return; }
+  // Usar el último pago como "este pago"
+  var ultimo = pagos[pagos.length - 1];
+  var datos = {
+    proveedor: p,
+    tipo: ultimo.tipo || ultimo.tipoPago,
+    fecha: ultimo.fecha.split('/').reverse().join('-'),
+    monto: Number(ultimo.monto),
+    formaPago: ultimo.formaPago,
+    nota: ultimo.nota,
+    compensado: ultimo.compensado,
+    quienTransfirio: ultimo.quienTransfirio
+  };
+  imprimirRecibo(datos);
+}
+
 // ─── RECIBO DE PAGO ────────────────────────────────────────────────────────
 function imprimirRecibo(datos) {
   var p = datos.proveedor;
-  // Obtener todos los pagos del proveedor y excluir el último (es el pago actual)
+  // Obtener pagos anteriores (excluir el último que es el pago actual recién grabado)
   var todosLosPagos = state.pagos.filter(function(pg) { return pg.idProveedor === p.id; });
-  var pagosAnteriores = todosLosPagos.slice(0, todosLosPagos.length - 1);
+  // Si el último pago coincide en monto con datos.monto, excluirlo (es el actual)
+  var pagosAnteriores = todosLosPagos.length > 0 && Number(todosLosPagos[todosLosPagos.length-1].monto) === Number(datos.monto)
+    ? todosLosPagos.slice(0, todosLosPagos.length - 1)
+    : todosLosPagos;
   var totalAnterior = pagosAnteriores.reduce(function(s, pg) { return s + (Number(pg.monto) || 0); }, 0);
   var totalConEste = totalAnterior + datos.monto;
   var acordado = Number(p.montoAcordado) || 0;
