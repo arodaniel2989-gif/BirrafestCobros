@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BirraFest VII — Dashboard Financiero</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --red:#C0392B;--red-dark:#a93226;--green:#1a7a3a;--blue:#1A5276;
+  --dark:#2C3E50;--bg:#f4f5f7;--card:#fff;--border:#e3e6ea;
+  --muted:#7a8290;--text:#1a2129;--amber:#e67e22;
+}
+body{font-family:'Helvetica Neue',Arial,sans-serif;background:var(--bg);color:var(--text);padding-bottom:40px;}
+header{background:linear-gradient(135deg,#2C3E50,#1a2129);color:#fff;padding:1.4rem 2rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;}
+header h1{font-size:18px;font-weight:700;letter-spacing:0.3px;}
+header .sub{font-size:11px;opacity:0.7;margin-top:3px;}
+.refresh{background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.3);color:#fff;border-radius:8px;padding:7px 14px;font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px;transition:.15s;}
+.refresh:hover{background:rgba(255,255,255,0.22);}
+.wrap{max-width:1180px;margin:0 auto;padding:1.6rem 2rem;}
+.loading{text-align:center;padding:60px;color:var(--muted);font-size:14px;}
+.section-title{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin:1.8rem 0 0.9rem;}
+
+/* SALDO PRINCIPAL */
+.hero{display:grid;grid-template-columns:2fr 1fr 1fr;gap:14px;}
+.hero-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:1.3rem 1.5rem;}
+.hero-card.main{background:linear-gradient(135deg,var(--green),#14602e);color:#fff;border:none;}
+.hero-card.main.neg{background:linear-gradient(135deg,var(--red),var(--red-dark));}
+.hc-label{font-size:11px;text-transform:uppercase;letter-spacing:0.8px;opacity:0.75;margin-bottom:8px;}
+.hero-card.main .hc-label{opacity:0.85;}
+.hc-value{font-size:30px;font-weight:700;letter-spacing:-0.5px;}
+.hero-card:not(.main) .hc-value{font-size:22px;color:var(--dark);}
+.hc-sub{font-size:11px;margin-top:6px;opacity:0.7;}
+
+/* BILLETERAS */
+.wallets{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;}
+.wallet{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:1.2rem 1.4rem;position:relative;overflow:hidden;}
+.wallet::before{content:'';position:absolute;top:0;left:0;width:4px;height:100%;}
+.wallet.efectivo::before{background:var(--green);}
+.wallet.caro::before{background:var(--blue);}
+.wallet.comp::before{background:var(--amber);}
+.w-name{font-size:13px;font-weight:700;color:var(--dark);margin-bottom:2px;}
+.w-tag{font-size:10px;color:var(--muted);margin-bottom:12px;}
+.w-row{display:flex;justify-content:space-between;font-size:12px;padding:4px 0;border-bottom:1px dotted var(--border);}
+.w-row:last-child{border-bottom:none;}
+.w-row .lbl{color:var(--muted);}
+.w-row .val{font-weight:600;}
+.w-row.total{margin-top:6px;padding-top:8px;border-top:2px solid var(--dark);border-bottom:none;}
+.w-row.total .lbl{font-weight:700;color:var(--dark);}
+.w-row.total .val{font-weight:700;font-size:14px;}
+.pos{color:var(--green);}.neg{color:var(--red);}
+
+/* TABLA */
+.panel{background:var(--card);border:1px solid var(--border);border-radius:14px;overflow:hidden;}
+.panel-hd{padding:0.9rem 1.3rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+.panel-hd h3{font-size:13px;font-weight:700;color:var(--dark);}
+.panel-hd .count{font-size:11px;color:var(--muted);}
+table{width:100%;border-collapse:collapse;font-size:12.5px;}
+th{background:#fafbfc;color:var(--muted);text-transform:uppercase;font-size:10px;letter-spacing:0.5px;padding:9px 14px;text-align:left;border-bottom:1px solid var(--border);position:sticky;top:0;}
+td{padding:9px 14px;border-bottom:1px solid var(--border);}
+tr:last-child td{border-bottom:none;}
+tr:hover td{background:#fafbfc;}
+.num{text-align:right;font-variant-numeric:tabular-nums;}
+.badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;}
+.b-ok{background:#e8f5e9;color:var(--green);}
+.b-pend{background:#fdecea;color:var(--red);}
+.b-parcial{background:#fff8e1;color:var(--amber);}
+.scroll{max-height:420px;overflow-y:auto;}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+@media(max-width:880px){.hero,.wallets,.two-col{grid-template-columns:1fr;}}
+.err{background:#fdecea;color:var(--red);padding:14px;border-radius:10px;font-size:13px;margin:10px 0;}
+.ts{font-size:10px;color:var(--muted);text-align:right;margin-top:8px;}
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>🍺 BirraFest VII — Dashboard Financiero</h1>
+    <div class="sub">Consolidado de ingresos y egresos · Solo lectura</div>
+  </div>
+  <button class="refresh" onclick="cargarTodo()">🔄 Actualizar</button>
+</header>
+
+<div class="wrap">
+  <div id="loading" class="loading">Cargando datos de cobros y egresos...</div>
+  <div id="content" style="display:none;">
+
+    <!-- SALDO PRINCIPAL -->
+    <div class="hero">
+      <div class="hero-card main" id="card-saldo">
+        <div class="hc-label">Saldo de caja disponible</div>
+        <div class="hc-value" id="v-saldo">—</div>
+        <div class="hc-sub" id="v-saldo-sub">Efectivo + Cuenta Caro</div>
+      </div>
+      <div class="hero-card">
+        <div class="hc-label">Total ingresado</div>
+        <div class="hc-value" id="v-ingresos">—</div>
+        <div class="hc-sub">Cobrado a expositores (real)</div>
+      </div>
+      <div class="hero-card">
+        <div class="hc-label">Total egresado</div>
+        <div class="hc-value" id="v-egresos">—</div>
+        <div class="hc-sub">Pagado a proveedores (real)</div>
+      </div>
+    </div>
+
+    <!-- BILLETERAS -->
+    <div class="section-title">Billeteras</div>
+    <div class="wallets">
+      <div class="wallet efectivo">
+        <div class="w-name">💵 Caja efectivo</div>
+        <div class="w-tag">Dinero físico</div>
+        <div class="w-row"><span class="lbl">Ingresos</span><span class="val pos" id="ef-in">—</span></div>
+        <div class="w-row"><span class="lbl">Egresos</span><span class="val neg" id="ef-out">—</span></div>
+        <div class="w-row total"><span class="lbl">Saldo</span><span class="val" id="ef-saldo">—</span></div>
+      </div>
+      <div class="wallet caro">
+        <div class="w-name">🏦 Cuenta Caro</div>
+        <div class="w-tag">Cuenta de la productora</div>
+        <div class="w-row"><span class="lbl">Ingresos</span><span class="val pos" id="caro-in">—</span></div>
+        <div class="w-row"><span class="lbl">Egresos</span><span class="val neg" id="caro-out">—</span></div>
+        <div class="w-row total"><span class="lbl">Saldo</span><span class="val" id="caro-saldo">—</span></div>
+      </div>
+      <div class="wallet comp">
+        <div class="w-name">🔄 Compensados</div>
+        <div class="w-tag">Expositor paga directo a proveedor</div>
+        <div class="w-row"><span class="lbl">Ingresos (expositores)</span><span class="val" id="comp-in">—</span></div>
+        <div class="w-row"><span class="lbl">Egresos (proveedores)</span><span class="val" id="comp-out">—</span></div>
+        <div class="w-row total"><span class="lbl">Neto</span><span class="val" id="comp-neto">—</span></div>
+      </div>
+    </div>
+
+    <div id="comp-warn"></div>
+
+    <!-- RESUMEN COMPROMISOS -->
+    <div class="section-title">Compromisos con proveedores</div>
+    <div class="hero">
+      <div class="hero-card">
+        <div class="hc-label">Total comprometido</div>
+        <div class="hc-value" id="v-comprometido">—</div>
+        <div class="hc-sub">Suma de montos acordados</div>
+      </div>
+      <div class="hero-card">
+        <div class="hc-label">Total cubierto</div>
+        <div class="hc-value" id="v-cubierto">—</div>
+        <div class="hc-sub">Pagado + compensado</div>
+      </div>
+      <div class="hero-card">
+        <div class="hc-label">Pendiente de pago</div>
+        <div class="hc-value" id="v-pend-prov" style="color:var(--red);">—</div>
+        <div class="hc-sub">Falta pagar a proveedores</div>
+      </div>
+    </div>
+
+    <!-- TABLAS -->
+    <div class="section-title">Detalle</div>
+    <div class="two-col">
+      <div class="panel">
+        <div class="panel-hd"><h3>Proveedores con saldo pendiente</h3><span class="count" id="cnt-prov">—</span></div>
+        <div class="scroll">
+          <table><thead><tr><th>Proveedor</th><th class="num">Acordado</th><th class="num">Pagado</th><th class="num">Pendiente</th></tr></thead>
+          <tbody id="tb-prov"></tbody></table>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-hd"><h3>Expositores con saldo pendiente</h3><span class="count" id="cnt-exp">—</span></div>
+        <div class="scroll">
+          <table><thead><tr><th>Stand</th><th class="num">Canon</th><th class="num">Cobrado</th><th class="num">Pendiente</th></tr></thead>
+          <tbody id="tb-exp"></tbody></table>
+        </div>
+      </div>
+    </div>
+
+    <div class="ts" id="timestamp"></div>
+  </div>
+  <div id="error-zone"></div>
+</div>
+
+<script>
+const URL_COBROS='https://script.google.com/macros/s/AKfycbx4MNzs0L7w3DB1qlPR5U8GZiVJo09PChOnOWCSlVsEKDdrTrnbGbdkG3wC5XhYjTUjvQ/exec';
+const URL_EGRESOS='https://script.google.com/macros/s/AKfycbwa2kFaxXUMuzpTmS293q1klfQEF-YpEeBznMjnc_XXg_aqOHFZWFIsGX6hVVKPmMpLaA/exec';
+
+function fmt(n){return '$ '+Math.round(Number(n)||0).toLocaleString('es-AR');}
+function esCaro(dest){var d=(dest||'').toLowerCase();return d.indexOf('caro')>=0||d.indexOf('carolina')>=0;}
+
+// Clasifica forma de pago de cobros usando destino
+function clasificarCobro(forma,dest){
+  var f=(forma||'').toLowerCase();
+  if(f.indexOf('efectivo')>=0)return 'efectivo';
+  if(f.indexOf('compensado')>=0)return 'compensado';
+  if(f.indexOf('cuenta caro')>=0)return 'caro';
+  if(f.indexOf('transf')>=0){return esCaro(dest)?'caro':'compensado';}
+  return 'otro';
+}
+
+// JSONP para egresos
+function jsonpEgresos(){
+  return new Promise(function(resolve,reject){
+    var cb='cb_eg_'+Date.now();
+    window[cb]=function(d){resolve(d);delete window[cb];};
+    var s=document.createElement('script');
+    s.src=URL_EGRESOS+'?action=datos&callback='+cb;
+    s.onerror=function(){reject('Error egresos');};
+    document.head.appendChild(s);
+    setTimeout(function(){if(window[cb]){reject('Timeout egresos');}},15000);
+  });
+}
+
+async function cargarTodo(){
+  document.getElementById('loading').style.display='block';
+  document.getElementById('content').style.display='none';
+  document.getElementById('error-zone').innerHTML='';
+  try{
+    // Cobros via fetch normal (tiene CORS), egresos via JSONP
+    var [cobros,egresos]=await Promise.all([
+      fetch(URL_COBROS+'?action=saldos',{method:'GET',mode:'cors'}).then(r=>r.json()),
+      jsonpEgresos()
+    ]);
+    procesar(cobros,egresos);
+    document.getElementById('loading').style.display='none';
+    document.getElementById('content').style.display='block';
+    document.getElementById('timestamp').textContent='Actualizado: '+new Date().toLocaleString('es-AR');
+  }catch(e){
+    document.getElementById('loading').style.display='none';
+    document.getElementById('error-zone').innerHTML='<div class="err">Error al cargar datos: '+e+'. Reintentá en unos segundos.</div>';
+  }
+}
+
+function procesar(cobros,egresos){
+  var senas=cobros.senas||[];
+  var saldos=cobros.saldos||[];
+  var proveedores=egresos.proveedores||[];
+  var pagos=egresos.pagos||[];
+
+  // ── INGRESOS (cobros) ──
+  var inEfectivo=0,inCaro=0,inComp=0;
+  function sumarIngreso(monto,forma,dest){
+    var cat=clasificarCobro(forma,dest);
+    var m=Number(monto)||0;
+    if(cat==='efectivo')inEfectivo+=m;
+    else if(cat==='caro')inCaro+=m;
+    else if(cat==='compensado')inComp+=m;
+    else inEfectivo+=m; // "otro" lo contamos como efectivo por defecto
+  }
+  senas.forEach(function(s){sumarIngreso(s.sena,s.forma,s.destino);});
+  saldos.forEach(function(s){sumarIngreso(s.monto,s.forma,s.destino);});
+
+  // ── EGRESOS (egresos) ──
+  var outEfectivo=0,outCaro=0,outComp=0;
+  pagos.forEach(function(p){
+    var m=Number(p.monto)||0;
+    var f=(p.formaPago||'').toLowerCase();
+    if(p.compensado)outComp+=m;
+    else if(f.indexOf('efectivo')>=0)outEfectivo+=m;
+    else outCaro+=m; // transferencia no compensada = Cuenta Caro
+  });
+
+  // ── SALDOS ──
+  var saldoEfectivo=inEfectivo-outEfectivo;
+  var saldoCaro=inCaro-outCaro;
+  var saldoCaja=saldoEfectivo+saldoCaro;
+  var ingresosReales=inEfectivo+inCaro;
+  var egresosReales=outEfectivo+outCaro;
+
+  // Render hero
+  var cardSaldo=document.getElementById('card-saldo');
+  cardSaldo.classList.toggle('neg',saldoCaja<0);
+  document.getElementById('v-saldo').textContent=fmt(saldoCaja);
+  document.getElementById('v-ingresos').textContent=fmt(ingresosReales);
+  document.getElementById('v-egresos').textContent=fmt(egresosReales);
+
+  // Billeteras
+  document.getElementById('ef-in').textContent=fmt(inEfectivo);
+  document.getElementById('ef-out').textContent='- '+fmt(outEfectivo);
+  var efS=document.getElementById('ef-saldo');efS.textContent=fmt(saldoEfectivo);efS.className='val '+(saldoEfectivo>=0?'pos':'neg');
+  document.getElementById('caro-in').textContent=fmt(inCaro);
+  document.getElementById('caro-out').textContent='- '+fmt(outCaro);
+  var caS=document.getElementById('caro-saldo');caS.textContent=fmt(saldoCaro);caS.className='val '+(saldoCaro>=0?'pos':'neg');
+  document.getElementById('comp-in').textContent=fmt(inComp);
+  document.getElementById('comp-out').textContent=fmt(outComp);
+  var cnNeto=inComp-outComp;
+  var cnEl=document.getElementById('comp-neto');cnEl.textContent=fmt(cnNeto);cnEl.className='val '+(Math.abs(cnNeto)<1?'pos':'neg');
+
+  // Warning si compensados no cuadran
+  if(Math.abs(cnNeto)>=1){
+    document.getElementById('comp-warn').innerHTML='<div class="err">⚠️ Los compensados no cuadran: ingresos '+fmt(inComp)+' vs egresos '+fmt(outComp)+' (diferencia '+fmt(cnNeto)+'). Revisá que cada compensado esté registrado en ambas apps.</div>';
+  }else{
+    document.getElementById('comp-warn').innerHTML='';
+  }
+
+  // ── COMPROMISOS PROVEEDORES ──
+  var comprometido=0;
+  proveedores.forEach(function(p){comprometido+=Number(p.montoAcordado)||0;});
+  var pagadoPorProv={};
+  pagos.forEach(function(p){
+    pagadoPorProv[p.idProveedor]=(pagadoPorProv[p.idProveedor]||0)+(Number(p.monto)||0);
+  });
+  var cubierto=outEfectivo+outCaro+outComp;
+  var pendProv=comprometido-cubierto;
+  document.getElementById('v-comprometido').textContent=fmt(comprometido);
+  document.getElementById('v-cubierto').textContent=fmt(cubierto);
+  document.getElementById('v-pend-prov').textContent=fmt(pendProv);
+
+  // Tabla proveedores pendientes
+  var provPend=proveedores.map(function(p){
+    var pagado=pagadoPorProv[p.id]||0;
+    var acordado=Number(p.montoAcordado)||0;
+    return {nombre:p.nombre,servicio:p.servicio,acordado:acordado,pagado:pagado,pendiente:acordado-pagado};
+  }).filter(function(p){return p.pendiente>0.5;}).sort(function(a,b){return b.pendiente-a.pendiente;});
+  document.getElementById('cnt-prov').textContent=provPend.length+' pendientes';
+  document.getElementById('tb-prov').innerHTML=provPend.length?provPend.map(function(p){
+    return '<tr><td><strong>'+p.nombre+'</strong><br><span style="font-size:10px;color:#999;">'+(p.servicio||'')+'</span></td><td class="num">'+fmt(p.acordado)+'</td><td class="num">'+fmt(p.pagado)+'</td><td class="num neg">'+fmt(p.pendiente)+'</td></tr>';
+  }).join(''):'<tr><td colspan="4" style="text-align:center;color:#999;padding:20px;">Todos los proveedores cubiertos ✓</td></tr>';
+
+  // ── EXPOSITORES PENDIENTES ──
+  var expData={};
+  senas.forEach(function(s){
+    if(!s.stand)return;
+    expData[s.stand]={canon:Number(s.canon)||0,cobrado:Number(s.sena)||0};
+  });
+  saldos.forEach(function(s){
+    if(!s.stand)return;
+    if(!expData[s.stand])expData[s.stand]={canon:0,cobrado:0};
+    expData[s.stand].cobrado+=Number(s.monto)||0;
+  });
+  var expPend=Object.keys(expData).map(function(k){
+    var e=expData[k];
+    return {stand:k,canon:e.canon,cobrado:e.cobrado,pendiente:e.canon-e.cobrado};
+  }).filter(function(e){return e.pendiente>0.5;}).sort(function(a,b){return b.pendiente-a.pendiente;});
+  document.getElementById('cnt-exp').textContent=expPend.length+' pendientes';
+  document.getElementById('tb-exp').innerHTML=expPend.length?expPend.map(function(e){
+    return '<tr><td><strong>'+e.stand+'</strong></td><td class="num">'+fmt(e.canon)+'</td><td class="num">'+fmt(e.cobrado)+'</td><td class="num neg">'+fmt(e.pendiente)+'</td></tr>';
+  }).join(''):'<tr><td colspan="4" style="text-align:center;color:#999;padding:20px;">Todos los expositores cancelados ✓</td></tr>';
+}
+
+cargarTodo();
+</script>
+</body>
+</html>
