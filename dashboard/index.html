@@ -153,6 +153,18 @@ tr:hover td{background:#fafbfc;}
       </div>
     </div>
 
+    <!-- MOVIMIENTOS CUENTA CARO -->
+    <div class="section-title" style="display:flex;justify-content:space-between;align-items:center;">
+      <span>Movimientos de Cuenta Caro</span>
+      <button class="refresh" style="background:var(--blue);border:none;color:#fff;" onclick="exportarCaro()">⬇ Exportar CSV</button>
+    </div>
+    <div class="panel">
+      <div class="scroll" style="max-height:360px;">
+        <table><thead><tr><th>Fecha</th><th>Detalle</th><th>Tipo</th><th class="num">Ingreso</th><th class="num">Egreso</th><th class="num">Saldo</th></tr></thead>
+        <tbody id="tb-caro"></tbody></table>
+      </div>
+    </div>
+
     <!-- TABLAS -->
     <div class="section-title">Detalle</div>
     <div class="two-col">
@@ -232,6 +244,7 @@ function procesar(cobros,egresos){
   var saldos=cobros.saldos||[];
   var proveedores=egresos.proveedores||[];
   var pagos=egresos.pagos||[];
+  window._provList=proveedores;
 
   // ── INGRESOS (cobros) ──
   var inEfectivo=0,inCaro=0,inComp=0;
@@ -355,6 +368,73 @@ function procesar(cobros,egresos){
   document.getElementById('tb-exp').innerHTML=expPend.length?expPend.map(function(e){
     return '<tr><td><strong>'+e.stand+'</strong></td><td class="num">'+fmt(e.canon)+'</td><td class="num">'+fmt(e.cobrado)+'</td><td class="num neg">'+fmt(e.pendiente)+'</td></tr>';
   }).join(''):'<tr><td colspan="4" style="text-align:center;color:#999;padding:20px;">Todos los expositores cancelados ✓</td></tr>';
+
+  // Movimientos de Cuenta Caro
+  renderMovimientosCaro(construirMovimientosCaro(senas,saldos,pagos));
+}
+
+// ── MOVIMIENTOS CUENTA CARO ──
+var _caroMovs=[];
+function construirMovimientosCaro(senas,saldos,pagos){
+  var movs=[];
+  // Ingresos: cobros con forma Cuenta Caro
+  senas.forEach(function(s){
+    if(clasificarCobro(s.forma,s.destino)==='caro' && (Number(s.sena)||0)>0){
+      movs.push({fecha:s.fecha||'',detalle:(s.stand||'')+' (seña)',tipo:'Ingreso',ingreso:Number(s.sena)||0,egreso:0});
+    }
+  });
+  saldos.forEach(function(s){
+    if(clasificarCobro(s.forma,s.destino)==='caro' && (Number(s.monto)||0)>0){
+      movs.push({fecha:s.fecha||'',detalle:(s.stand||'')+' (saldo)',tipo:'Ingreso',ingreso:Number(s.monto)||0,egreso:0});
+    }
+  });
+  // Egresos: pagos por transferencia no compensada (Cuenta Caro)
+  var provById={};
+  (window._provList||[]).forEach(function(p){provById[p.id]=p.nombre;});
+  pagos.forEach(function(p){
+    var f=(p.formaPago||'').toLowerCase();
+    if(!p.compensado && f.indexOf('efectivo')<0){
+      movs.push({fecha:p.fecha||'',detalle:(provById[p.idProveedor]||p.idProveedor||''),tipo:'Egreso',ingreso:0,egreso:Number(p.monto)||0});
+    }
+  });
+  // Ordenar por fecha (parseando dd/mm/yyyy o texto)
+  function fkey(f){
+    if(!f)return 0;
+    var m=f.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+    if(m)return new Date(m[3],m[2]-1,m[1]).getTime();
+    var meses={enero:0,febrero:1,marzo:2,abril:3,mayo:4,junio:5,julio:6,agosto:7,septiembre:8,octubre:9,noviembre:10,diciembre:11};
+    var m2=f.toLowerCase().match(/(\d{1,2}) de (\w+) de (\d{4})/);
+    if(m2&&meses[m2[2]]!==undefined)return new Date(m2[3],meses[m2[2]],m2[1]).getTime();
+    return 0;
+  }
+  movs.sort(function(a,b){return fkey(a.fecha)-fkey(b.fecha);});
+  // Calcular saldo corriendo
+  var saldo=0;
+  movs.forEach(function(m){saldo+=m.ingreso-m.egreso;m.saldo=saldo;});
+  return movs;
+}
+function renderMovimientosCaro(movs){
+  _caroMovs=movs;
+  var tb=document.getElementById('tb-caro');
+  if(!movs.length){tb.innerHTML='<tr><td colspan="6" style="text-align:center;color:#999;padding:20px;">Sin movimientos</td></tr>';return;}
+  tb.innerHTML=movs.map(function(m){
+    return '<tr><td>'+m.fecha+'</td><td>'+m.detalle+'</td><td><span class="badge '+(m.tipo==='Ingreso'?'b-ok':'b-pend')+'">'+m.tipo+'</span></td><td class="num pos">'+(m.ingreso?fmt(m.ingreso):'')+'</td><td class="num neg">'+(m.egreso?fmt(m.egreso):'')+'</td><td class="num"><strong>'+fmt(m.saldo)+'</strong></td></tr>';
+  }).join('');
+}
+function exportarCaro(){
+  if(!_caroMovs.length){alert('No hay movimientos para exportar');return;}
+  var lineas=['Fecha,Detalle,Tipo,Ingreso,Egreso,Saldo'];
+  _caroMovs.forEach(function(m){
+    var det='"'+(m.detalle||'').replace(/"/g,'""')+'"';
+    lineas.push([m.fecha,det,m.tipo,m.ingreso,m.egreso,m.saldo].join(','));
+  });
+  var csv='\ufeff'+lineas.join('\n');
+  var blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
+  var url=URL.createObjectURL(blob);
+  var a=document.createElement('a');
+  a.href=url;a.download='movimientos_cuenta_caro_'+new Date().toISOString().slice(0,10)+'.csv';
+  document.body.appendChild(a);a.click();document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 }
 
 cargarTodo();
