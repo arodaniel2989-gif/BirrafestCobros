@@ -112,6 +112,7 @@ tr:hover td{background:#fafbfc;}
         <div class="w-tag">Dinero físico</div>
         <div class="w-row"><span class="lbl">Ingresos</span><span class="val pos" id="ef-in">—</span></div>
         <div class="w-row"><span class="lbl">Egresos</span><span class="val neg" id="ef-out">—</span></div>
+        <div class="w-row"><span class="lbl" style="font-size:10px;">↳ incluye caja chica</span><span class="val" style="font-size:11px;color:var(--amber);" id="ef-cc">—</span></div>
         <div class="w-row total"><span class="lbl">Saldo</span><span class="val" id="ef-saldo">—</span></div>
       </div>
       <div class="wallet caro">
@@ -244,6 +245,7 @@ function procesar(cobros,egresos){
   var saldos=cobros.saldos||[];
   var proveedores=egresos.proveedores||[];
   var pagos=egresos.pagos||[];
+  var cajaChica=egresos.cajaChica||[];
   window._provList=proveedores;
 
   // ── INGRESOS (cobros) ──
@@ -268,6 +270,15 @@ function procesar(cobros,egresos){
     else if(f.indexOf('efectivo')>=0)outEfectivo+=m;
     else outCaro+=m; // transferencia no compensada = Cuenta Caro
   });
+  // Caja chica: sale del efectivo
+  var totalCajaChica=0;
+  cajaChica.forEach(function(g){
+    var m=Number(g.monto)||0;
+    var f=(g.formaPago||'').toLowerCase();
+    totalCajaChica+=m;
+    if(f.indexOf('caro')>=0)outCaro+=m;
+    else outEfectivo+=m; // por defecto efectivo
+  });
 
   // ── SALDOS ──
   var saldoEfectivo=inEfectivo-outEfectivo;
@@ -286,6 +297,7 @@ function procesar(cobros,egresos){
   // Billeteras
   document.getElementById('ef-in').textContent=fmt(inEfectivo);
   document.getElementById('ef-out').textContent='- '+fmt(outEfectivo);
+  document.getElementById('ef-cc').textContent=fmt(totalCajaChica);
   var efS=document.getElementById('ef-saldo');efS.textContent=fmt(saldoEfectivo);efS.className='val '+(saldoEfectivo>=0?'pos':'neg');
   document.getElementById('caro-in').textContent=fmt(inCaro);
   document.getElementById('caro-out').textContent='- '+fmt(outCaro);
